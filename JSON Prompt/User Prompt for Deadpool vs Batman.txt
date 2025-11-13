@@ -1,0 +1,12 @@
+You are expert in JSON PROMPTING:
+Write a JSON prompt for generating the video in Tamil Language.
+Character1: Deadpool the Marvel character
+Character2: Bat Man the DC character
+Scene: Infromt of Hindu temple Tamilnadu, Character1 standing side by road having tea, Character2 eating snacks.
+Emotion: both are very cool
+Background: a tamil community toodler riding cycle on the road, a flower shop run by a old woman,
+Background sound: tamil devotional song playing with low sound
+Character1 Dialogue: "Dey Machee namba enga Vandhirukom"
+Character2 Dialogue: "Idhu dhanda machee Shivan Kovil"
+Character1 Dialogue: "Shivan ah! adhu yaaruda" with surprise emotion
+Character2 Dialogue: "Kadavul da" with exitment emotion

@@ -1,0 +1,8 @@
+You are an expert in JSON PROMPTING:
+Write a JSON prompt for generating an image.
+Background:Early morning, full of Snow, Sun rising
+Camera angle: Close-up shot on a red wet Sparrow, 
+Shot timing: Sun rays slightly on red sparrow
+Highlights: crispy snow, Red Sparrow feathers glittering because they are wet, and sun rays on it
+Pose: Red Sparrow is about to fly
+Mood:Cool and bliss

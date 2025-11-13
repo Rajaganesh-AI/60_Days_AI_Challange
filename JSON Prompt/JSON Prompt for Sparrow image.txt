@@ -1,0 +1,47 @@
+{
+  "image_title": "Red Sparrow's Morning Ascent",
+  "prompt_description": "A dynamic close-up shot of a vibrant red sparrow poised on crispy white snow in the early morning. The rising sun's soft rays illuminate its wet, glittering feathers as it prepares to take flight, capturing a moment of anticipation and beauty.",
+  "scene": {
+    "time_of_day": "Early morning, sunrise",
+    "weather": "Full of snow, fresh and pristine",
+    "lighting": "Sun rising, gentle golden sun rays directly hitting the sparrow and the immediate foreground, creating highlights on the snow.",
+    "background_elements": [
+      "Vast expanse of crispy white snow, undisturbed.",
+      "Soft, ethereal glow of the rising sun in the background.",
+      "Subtle, soft focus on the background to emphasize the sparrow's action."
+    ]
+  },
+  "subject": {
+    "main_subject": "Red Sparrow",
+    "description": "A vivid red sparrow, its feathers visibly wet and glistening, reflecting the sunlight.",
+    "positioning": "Poised on the snow, body slightly tensed, wings slightly open or preparing to flap, suggesting it's about to fly.",
+    "focus": "Sharp focus on the sparrow, capturing the intricate details of its feathers and the tension in its pose."
+  },
+  "camera_settings": {
+    "angle": "Close-up shot",
+    "perspective": "Eye-level with the sparrow or slightly below to emphasize its upward movement.",
+    "depth_of_field": "Shallow, to create a strong separation between the subject and the softly blurred background."
+  },
+  "visual_elements": {
+    "highlights": [
+      "Crispy snow texture, clearly defined with subtle sparkle from the sun.",
+      "Red sparrow feathers intensely glittering due to wetness and direct sunlight.",
+      "Dynamic visual lines created by the sparrow's pose, conveying imminent flight."
+    ],
+    "colors": [
+      "Vibrant red of the sparrow (deep and rich)",
+      "Pure, brilliant white of the snow (with blue undertones in shadows)",
+      "Soft golden and orange hues from the rising sun, warm and inviting.",
+      "Subtle hints of blue in the sky or distant snow."
+    ]
+  },
+  "mood": [
+    "Cool",
+    "Blissful",
+    "Serene",
+    "Anticipatory",
+    "Magical",
+    "Hopeful"
+  ],
+  "aesthetic": "Photorealistic, high-detail, artistic wildlife photography, emphasizing motion and light."
+}

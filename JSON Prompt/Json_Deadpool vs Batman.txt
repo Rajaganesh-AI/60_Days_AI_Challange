@@ -1,0 +1,71 @@
+{
+  "title": "Deadpool and Batman in Tamil Nadu",
+  "language": "Tamil",
+  "style": "Cinematic/Action-Comedy",
+  "video_specifications": {
+    "duration_seconds": 30,
+    "aspect_ratio": "16:9",
+    "color_palette": "Vibrant, sun-drenched (typical South Indian)",
+    "mood": "Cool, casual, slightly surreal"
+  },
+  "scene": {
+    "setting": "Front of a traditional Hindu temple in Tamil Nadu",
+    "time_of_day": "Late Afternoon (golden hour)",
+    "location_details": [
+      "A main road beside the temple.",
+      "A small roadside tea stall/shop (bunk/tea kadai).",
+      "A flower shop run by an elderly woman nearby."
+    ],
+    "background_action": [
+      "A young Tamil community toddler riding a small bicycle on the road.",
+      "The old woman attending to her flower shop."
+    ],
+    "soundscape": {
+      "primary_audio": "Dialogue",
+      "background_music": "Tamil devotional song (low volume, serene, e.g., 'Thevaram' or 'Abirami Andhathi' style)",
+      "ambient_sounds": "Light traffic, temple bells (intermittently), tea stall activity."
+    }
+  },
+  "characters": [
+    {
+      "name": "Deadpool",
+      "role": "Character1",
+      "costume": "Standard Deadpool suit (clean)",
+      "current_action": "Standing casually by the roadside, sipping tea from a small steel tumbler.",
+      "emotion": "Very cool, relaxed, slightly mischievous."
+    },
+    {
+      "name": "Batman",
+      "role": "Character2",
+      "costume": "Standard Batman suit (classic grey/black), unmasked (optional, for face visibility)",
+      "current_action": "Leaning against a wall, eating local snacks (e.g., *sundal* or *murukku*).",
+      "emotion": "Very cool, calm, observant."
+    }
+  ],
+  "dialogue_sequence": [
+    {
+      "speaker": "Deadpool",
+      "line_tamil": "Dey Machee namba enga Vandhirukom",
+      "english_translation": "Hey buddy, where have we come to?",
+      "emotion_change": "Cool, casual question"
+    },
+    {
+      "speaker": "Batman",
+      "line_tamil": "Idhu dhanda machee Shivan Kovil",
+      "english_translation": "This is the Shiva Temple, buddy.",
+      "emotion_change": "Cool, matter-of-fact answer"
+    },
+    {
+      "speaker": "Deadpool",
+      "line_tamil": "Shivan ah! adhu yaaruda",
+      "english_translation": "Shiva?! Who is that, man?",
+      "emotion_change": "Surprise, slight confusion"
+    },
+    {
+      "speaker": "Batman",
+      "line_tamil": "Kadavul da",
+      "english_translation": "He is God, man.",
+      "emotion_change": "Excitement, reverence"
+    }
+  ]
+}
