@@ -1,0 +1,232 @@
+{
+  "name": "Personalized Welcome Emails from Google Sheet",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -1168,
+        -240
+      ],
+      "id": "6895729c-5976-467d-99a4-04c7228a7a96",
+      "name": "Manual Trigger"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1UJpqOFUzPrnOTCzcSikOR_WOpR30XpkH5oyHCXaGo5I",
+          "mode": "list",
+          "cachedResultName": "n8nDemo",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1UJpqOFUzPrnOTCzcSikOR_WOpR30XpkH5oyHCXaGo5I/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 299426548,
+          "mode": "list",
+          "cachedResultName": "Personalized_Welcome_Emails",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1UJpqOFUzPrnOTCzcSikOR_WOpR30XpkH5oyHCXaGo5I/edit#gid=299426548"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        -960,
+        -240
+      ],
+      "id": "4cee5f69-6aad-429d-a3e0-3abf70307389",
+      "name": "Get Customers Email",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "L8nx4NEeh8SQzkAs",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        -752,
+        -240
+      ],
+      "id": "a6464784-777a-4917-9a10-b600d0a9371f",
+      "name": "Send Customer One by One"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "name": "loop one by one",
+      "typeVersion": 1,
+      "position": [
+        -544,
+        -32
+      ],
+      "id": "d90736b8-4e7f-47cf-b6a2-97996b5459c5"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "01862c0c-9bc0-47c0-a2a3-7b7d60dc3618",
+              "name": "email",
+              "value": "={{ $json.Email }}",
+              "type": "string"
+            },
+            {
+              "id": "f6eb36fa-55f8-4135-a926-fdb359e314bd",
+              "name": "Subject",
+              "value": "=Welcome to  {{ $json.Product }} Family",
+              "type": "string"
+            },
+            {
+              "id": "c22fc3ca-e90c-4d62-9e2f-8604431b9ed9",
+              "name": "Message",
+              "value": "={{(() => {\n  const name = $json[\"Name\"];\n  const product = $json[\"Product\"];\n  const logoUrl = \"https://socialeagle.ai/se-logo-horizontal.png\"; // replace with actual logo URL\n\n  // Define templates for each product\n  const templates = {\n    \"Audio Summarizer\": `\n      <div style=\"font-family:Arial, sans-serif;line-height:1.6;color:#333;\">\n        <img src=\"${logoUrl}\" alt=\"Brand Logo\" style=\"width:400px;margin-bottom:20px;\">\n        <h2>Welcome to the Audio Summarizer Community, ${name}!</h2>\n        <p>We're thrilled to have you join our family of creators who simplify audio content like never before. Audio Summarizer helps you turn hours of recordings into concise summaries effortlessly.</p>\n        <p>Our team has built this tool to empower professionals like you to save time and stay focused on what truly matters — creativity and productivity.</p>\n        <p>Feel free to explore tutorials and resources inside your dashboard to get started.</p>\n        <p>Warm regards,<br><strong>Team Audio Summarizer</strong></p>\n      </div>`,\n\n    \"Invoice Tool\": `\n      <div style=\"font-family:Arial, sans-serif;line-height:1.6;color:#333;\">\n        <img src=\"${logoUrl}\" alt=\"Brand Logo\" style=\"width:400px;margin-bottom:20px;\">\n        <h2>Hello ${name}, welcome to Invoice Tool!</h2>\n        <p>Managing invoices just got easier. With our automated invoicing platform, you can generate, track, and manage payments in just a few clicks.</p>\n        <p>We’re excited to help you simplify your workflow and maintain a clear financial overview — all in one place.</p>\n        <p>Head to your account to create your first invoice now!</p>\n        <p>Best,<br><strong>Invoice Tool Team</strong></p>\n      </div>`,\n\n    \"Video Maker\": `\n      <div style=\"font-family:Arial, sans-serif;line-height:1.6;color:#333;\">\n        <img src=\"${logoUrl}\" alt=\"Brand Logo\" style=\"width:400px;margin-bottom:20px;\">\n        <h2>Welcome aboard, ${name}!</h2>\n        <p>You're now part of the Video Maker community — where ideas come to life in motion. Create stunning videos easily with our drag-and-drop editor and rich media library.</p>\n        <p>Whether it's social media reels, tutorials, or marketing clips, Video Maker gives you the creative power you deserve.</p>\n        <p>Start your journey today and let your visuals do the talking!</p>\n        <p>Cheers,<br><strong>The Video Maker Team</strong></p>\n      </div>`,\n\n    \"Photo Editor\": `\n      <div style=\"font-family:Arial, sans-serif;line-height:1.6;color:#333;\">\n        <img src=\"${logoUrl}\" alt=\"Brand Logo\" style=\"width:400px;margin-bottom:20px;\">\n        <h2>Hi ${name}, welcome to the Photo Editor family!</h2>\n        <p>We’re thrilled to have you join a vibrant community of artists, designers, and editors who bring visuals to life. Photo Editor is your creative companion for every pixel-perfect project.</p>\n        <p>Experiment with powerful tools, effects, and AI enhancements — all designed to make your photos stand out effortlessly.</p>\n        <p>Log in and begin transforming your creativity into masterpieces today!</p>\n        <p>With appreciation,<br><strong>Photo Editor Support Team</strong></p>\n      </div>`\n  };\n\n  // Return the email message according to the product\n  return templates[product] || `<p>Hello ${name}, welcome!</p>`;\n})()}}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -544,
+        -256
+      ],
+      "id": "062f15e4-2cf6-4763-9d5c-500c09aa59b9",
+      "name": "Personalizing Message"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        -336,
+        -256
+      ],
+      "id": "12088169-4b3e-4de2-8758-7a442f105860",
+      "name": "Wait for 5 seconds",
+      "webhookId": "14dd7782-27fb-4a0f-b4cb-237ac1cba8a4"
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $json.email }}",
+        "subject": "={{ $json.Subject }}",
+        "message": "={{ $json.Message }}",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        -96,
+        -256
+      ],
+      "id": "48519271-0eae-4a90-959e-bc6cea43e778",
+      "name": "Send Welcome message",
+      "webhookId": "28713e4a-1755-4717-9cbc-3ef634748aaf",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "k7BiEc2frdpnFoSO",
+          "name": "The_AI_MailID"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "Get Customers Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Customers Email": {
+      "main": [
+        [
+          {
+            "node": "Send Customer One by One",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Customer One by One": {
+      "main": [
+        [
+          {
+            "node": "Personalizing Message",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "loop one by one",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "loop one by one": {
+      "main": [
+        [
+          {
+            "node": "Send Customer One by One",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Personalizing Message": {
+      "main": [
+        [
+          {
+            "node": "Wait for 5 seconds",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait for 5 seconds": {
+      "main": [
+        [
+          {
+            "node": "Send Welcome message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "9fe83e33-1249-4b9f-8129-dd9a8e26a544",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "b19475a16ece7dfa3179c4c5c74666e9ce9dbe755777e3f588b915772cb4fd7d"
+  },
+  "id": "7yhqXzvCoctITx6S",
+  "tags": []
+}

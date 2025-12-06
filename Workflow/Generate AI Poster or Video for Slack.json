@@ -1,0 +1,309 @@
+{
+  "name": "Generate AI Poster or Video for Slack",
+  "nodes": [
+    {
+      "parameters": {
+        "trigger": [
+          "message"
+        ],
+        "channelId": {
+          "__rl": true,
+          "value": "C0A1Y7SA4BU",
+          "mode": "list",
+          "cachedResultName": "design_n8n"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.slackTrigger",
+      "typeVersion": 1,
+      "position": [
+        -560,
+        -112
+      ],
+      "id": "c4c22b45-8b1a-4c0e-a026-74225bdbda52",
+      "name": "Slack Trigger",
+      "webhookId": "03b6b4a4-5d4b-4cc0-bd50-56107ffcd30f",
+      "credentials": {
+        "slackApi": {
+          "id": "C3zAHCvhrLVycsI9",
+          "name": "Slack account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-4o-mini",
+          "mode": "list",
+          "cachedResultName": "GPT-4O-MINI"
+        },
+        "responses": {
+          "values": [
+            {
+              "content": "=`You are an assistant that classifies the message as either an \"image\" or \"video\" request.\n\nUser message: \"{{ $json.text }}\"\n\nReturn ONLY valid JSON, no markdown or code fences.\n\nRules:\n- If the message includes words like \"poster\", \"banner\", \"design\", \"image\", \"picture\", \"template\", \"photo\" → set type = \"image\"\n- If the message includes words like \"video\", \"clip\", \"animation\", \"reel\", \"motion\" → set type = \"video\"\n- Otherwise guess based on context, but avoid always defaulting to \"video\".\n\nUse the user's message text exactly for \"prompt\".\n\nFormat:\n{\"type\":\"image\",\"prompt\":\"<user message>\"}\nor\n{\"type\":\"video\",\"prompt\":\"<user message>\"}\n`"
+            },
+            {
+              "role": "system",
+              "content": "=You are a classifier that determines whether a Slack user wants to create an image or a video. \n\nDo NOT change, summarize, or rephrase the user’s message. \n\nYou must return valid JSON only with these two fields:\n\n{\n  \"type\": \"image\" | \"video\",\n  \"prompt\": \"<the exact user message>\"\n}"
+            }
+          ]
+        },
+        "builtInTools": {},
+        "options": {
+          "temperature": 0.7
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 2,
+      "position": [
+        -352,
+        -112
+      ],
+      "id": "113ed237-fbd6-41a2-acf1-f4895d408abf",
+      "name": "Message a model",
+      "credentials": {
+        "openAiApi": {
+          "id": "cADxqFhKoXFjEnFy",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Parse the JSON string returned from the OpenAI node\nconst raw = $json.output[0].content[0].text;\nconst cleaned = raw.replace(/```json|```/g, '').trim();\nreturn JSON.parse(cleaned);"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        0,
+        -112
+      ],
+      "id": "27cd9974-8b03-4923-a6aa-e3a6d179cbe7",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "de6a37fb-3f7a-4a07-a913-3ceb877ed17f",
+              "leftValue": "={{ $json.type }}",
+              "rightValue": "image",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        208,
+        -112
+      ],
+      "id": "65ddc639-098c-4d3a-8fe4-c89fac41f7a4",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "resource": "image",
+        "model": "dall-e-2",
+        "prompt": "={{ $json.prompt }}",
+        "options": {
+          "size": "1024x1024"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 2,
+      "position": [
+        416,
+        -208
+      ],
+      "id": "076cad28-10d4-4058-8fd6-cd66b88b3663",
+      "name": "Generate an image",
+      "credentials": {
+        "openAiApi": {
+          "id": "cADxqFhKoXFjEnFy",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "video",
+        "modelId": {
+          "__rl": true,
+          "value": "sora-2",
+          "mode": "list",
+          "cachedResultName": "SORA-2"
+        },
+        "prompt": "={{ $json.prompt }}",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 2,
+      "position": [
+        416,
+        -16
+      ],
+      "id": "6ff49706-77d6-4a6c-9b6c-cabe5645bfe7",
+      "name": "Generate a video",
+      "credentials": {
+        "openAiApi": {
+          "id": "cADxqFhKoXFjEnFy",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "resource": "file",
+        "binaryPropertyName": "=data",
+        "options": {
+          "channelId": "C0A1Y7SA4BU",
+          "fileName": "generated-image.png",
+          "initialComment": "=🖼️ Here's your AI-generated image! ({{ $json.fileSize }})"
+        }
+      },
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.3,
+      "position": [
+        624,
+        -208
+      ],
+      "id": "4f4b4575-7d95-4389-b408-1c0148fe0d51",
+      "name": "Upload a file",
+      "webhookId": "b75abab9-aa06-4672-9218-7ac9ccfea5f6",
+      "credentials": {
+        "slackOAuth2Api": {
+          "id": "n9LyyJzU2RPvSbIm",
+          "name": "Slack account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "resource": "file",
+        "options": {
+          "channelId": "C0A1Y7SA4BU",
+          "initialComment": "=🖼️ Here's your AI-generated Video! ({{ $json.fileSize }})"
+        }
+      },
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.3,
+      "position": [
+        624,
+        -16
+      ],
+      "id": "8444df0d-43a5-47dd-9547-737e779fc03c",
+      "name": "Upload a file1",
+      "webhookId": "513acb03-1814-4829-905f-7e66ddc9b0c8",
+      "credentials": {
+        "slackOAuth2Api": {
+          "id": "n9LyyJzU2RPvSbIm",
+          "name": "Slack account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Slack Trigger": {
+      "main": [
+        [
+          {
+            "node": "Message a model",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Message a model": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Generate an image",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Generate a video",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate an image": {
+      "main": [
+        [
+          {
+            "node": "Upload a file",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate a video": {
+      "main": [
+        [
+          {
+            "node": "Upload a file1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "da28aff9-8309-4352-ab3b-08c26ce6ab85",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "b19475a16ece7dfa3179c4c5c74666e9ce9dbe755777e3f588b915772cb4fd7d"
+  },
+  "id": "tgfL5LKWmMGIqjoS",
+  "tags": []
+}

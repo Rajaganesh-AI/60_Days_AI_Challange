@@ -1,0 +1,190 @@
+{
+  "name": "Support Email → Slack + Auto Reply",
+  "nodes": [
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "filters": {}
+      },
+      "type": "n8n-nodes-base.gmailTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        -752,
+        -304
+      ],
+      "id": "75b67cc2-2e5a-4b81-87e6-54359b89560a",
+      "name": "Gmail Trigger when new email",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "k7BiEc2frdpnFoSO",
+          "name": "The_AI_MailID"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "7987f77d-f31c-45fc-8b50-2a4e5c737846",
+              "leftValue": "={{ $json.Subject && ($json.Subject.toLowerCase().includes('help') || $json.Subject.toLowerCase().includes('support')) }}",
+              "rightValue": "={{ $json.Subject && ($json.Subject.toLowerCase().includes('help') || $json.Subject.toLowerCase().includes('support')) }}",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -528,
+        -304
+      ],
+      "id": "430ada04-d694-4046-a229-a6aa00509651",
+      "name": "If subject Contains \"Help\" or \"Support\""
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "C0A1GPR15M5",
+          "mode": "list",
+          "cachedResultName": "product_support"
+        },
+        "text": "={{`📩 *New Support Ticket*\\nFrom: ${$json[\"From\"]}\\nSubject: ${$json[\"Subject\"]}\\n\\n${$json[\"snippet\"]}`}}",
+        "otherOptions": {}
+      },
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.3,
+      "position": [
+        -320,
+        -320
+      ],
+      "id": "1e112650-1db0-40cb-861c-c57c44fa00ea",
+      "name": "Notification to Slack group",
+      "webhookId": "b4cbb0de-a0e9-4bbc-b02e-640d0c011f96",
+      "credentials": {
+        "slackOAuth2Api": {
+          "id": "n9LyyJzU2RPvSbIm",
+          "name": "Slack account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "amount": 10
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        -112,
+        -320
+      ],
+      "id": "a39edd11-0c3e-44ee-ba01-d4a8edfad5eb",
+      "name": "Wait for 10 Sec",
+      "webhookId": "06512fdc-ebfd-4bbe-bdc6-dc8c94a4fc6e"
+    },
+    {
+      "parameters": {
+        "operation": "reply",
+        "messageId": "={{ $('If subject Contains \"Help\" or \"Support\"').item.json.id }}",
+        "emailType": "text",
+        "message": "=Thank you for bringing your query to our support team.\n\nOur experts are reviewing your request and will get back to you shortly.\n\n— Team Support 🤝",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        112,
+        -320
+      ],
+      "id": "5ee4bfeb-08e3-4dfc-b056-b4d2c6011feb",
+      "name": "Acknowledge Customer",
+      "webhookId": "aba2cc93-dcaa-4348-a66c-17696dcaa778",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "k7BiEc2frdpnFoSO",
+          "name": "The_AI_MailID"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Gmail Trigger when new email": {
+      "main": [
+        [
+          {
+            "node": "If subject Contains \"Help\" or \"Support\"",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If subject Contains \"Help\" or \"Support\"": {
+      "main": [
+        [
+          {
+            "node": "Notification to Slack group",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Notification to Slack group": {
+      "main": [
+        [
+          {
+            "node": "Wait for 10 Sec",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait for 10 Sec": {
+      "main": [
+        [
+          {
+            "node": "Acknowledge Customer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "8828f7dc-7d14-4877-991b-321f78930cb5",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "b19475a16ece7dfa3179c4c5c74666e9ce9dbe755777e3f588b915772cb4fd7d"
+  },
+  "id": "jk2G0gAGxuwUn0bx",
+  "tags": []
+}
