@@ -1,0 +1,2003 @@
+{
+  "name": "UI_Research Agent Newsletter System",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "newsletter-subscribe",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "96008201-1d4e-4ddb-8247-779ccb83bb19",
+      "name": "Webhook - Subscribe",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        128,
+        -176
+      ],
+      "webhookId": "newsletter-subscribe"
+    },
+    {
+      "parameters": {
+        "jsCode": "// ======================================================\n// Validate & Normalize Webhook Input (Full Production Version)\n// Handles fuzzy matching for region, domain & frequency\n// ======================================================\n\nconsole.log('=== Validate Input Started ===');\n\n// STEP 1: Parse Webhook JSON safely\nlet rawBody = $input.first().json.body;\nlet payload;\n\ntry {\n  if (typeof rawBody === 'string') {\n    payload = JSON.parse(rawBody);\n    if (typeof payload === 'string') payload = JSON.parse(payload);\n  } else {\n    payload = rawBody;\n  }\n} catch (err) {\n  throw new Error(`❌ Failed to parse request body: ${err.message}`);\n}\n\n// STEP 2: Validate required fields\nif (!payload.email || !payload.full_name) {\n  throw new Error('Missing required fields: email or full_name');\n}\n\nconst emailRegex = /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/;\nif (!emailRegex.test(payload.email)) {\n  throw new Error(`Invalid email format: ${payload.email}`);\n}\n\n// STEP 3: Reference lists\nconst validRegions = [\n  'North America',\n  'Europe',\n  'Asia',\n  'South America',\n  'Australia',\n  'Africa',\n  'Global',\n];\n\nconst validDomains = [\n  'Crime and security',\n  'Political',\n  'Health & education',\n  'Science & technology',\n  'Business & economy',\n  'Sports',\n];\n\nconst validFrequencies = ['Daily', 'Weekly'];\n\n// STEP 4: Normalization Helpers\nfunction normalizeInput(value) {\n  if (!value) return '';\n  return value\n    .toString()\n    .trim()\n    .toLowerCase()\n    .replace(/[-_/&]+/g, ' ') // unify delimiters\n    .replace(/\\s+/g, ' ')\n    .trim();\n}\n\nfunction toTitleCase(value) {\n  return value\n    .split(' ')\n    .map(w => w.charAt(0).toUpperCase() + w.slice(1))\n    .join(' ');\n}\n\n// STEP 5: Semantic normalization map for known synonyms\nconst domainCorrections = {\n  'crime security': 'Crime & security',\n  'business economy': 'Business & economy',\n  'health education': 'Health & education',\n  'science technology': 'Science & technology',\n  'science and technology': 'Science & technology',\n};\n\nconst regionCorrections = {\n  'south america': 'South America',\n  'north america': 'North America',\n};\n\n// STEP 6: Smart matcher function\nfunction matchFromList(input, validList, defaultValue, corrections = {}) {\n  const normInput = normalizeInput(input);\n\n  // check if correction map has it\n  if (corrections[normInput]) return corrections[normInput];\n\n  // try direct match in list\n  const found = validList.find(item => normalizeInput(item) === normInput);\n  if (found) return found;\n\n  // fallback if contains substring match\n  const partial = validList.find(item => normalizeInput(item).includes(normInput));\n  if (partial) return partial;\n\n  // fallback default\n  return defaultValue;\n}\n\n// STEP 7: Clean & validated output\nconst cleanData = {\n  full_name: payload.full_name.trim(),\n  email: payload.email.toLowerCase().trim(),\n  region: matchFromList(payload.region, validRegions, 'International', regionCorrections),\n  domain: matchFromList(payload.domain, validDomains, 'Science & technology', domainCorrections),\n  frequency: matchFromList(payload.frequency, validFrequencies, 'Daily'),\n  subscribed_date: new Date().toISOString(),\n  status: 'active',\n  last_sent: null,\n};\n\n// STEP 8: Log & return\nconsole.log('✅ Validation Passed');\nconsole.log('Clean Output:', cleanData);\n\nreturn [{ json: cleanData }];\n"
+      },
+      "id": "b618952e-9f1e-48fa-a50d-8149c7a77783",
+      "name": "Validate Input",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        368,
+        -176
+      ]
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $('Add Subscriber').item.json.email }}",
+        "subject": "=Welcome to Your Personalized  Newsletter! {{ $('Add Subscriber').item.json.domain }} Edition",
+        "message": "=<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UTF-8\">\n  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n  <style>\n    body { margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }\n    .container { max-width: 600px; margin: 0 auto; background: #ffffff; }\n    .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 40px 20px; text-align: center; }\n    .header h1 { color: white; margin: 0; font-size: 28px; }\n    .content { padding: 40px 30px; }\n    .content h2 { color: #2d3748; margin-top: 0; }\n    .content p { color: #4a5568; line-height: 1.6; font-size: 16px; }\n    .feature { display: flex; align-items: flex-start; margin: 20px 0; padding: 15px; background: #f7fafc; border-radius: 8px; }\n    .feature-icon { width: 24px; height: 24px; background: #667eea; border-radius: 50%; margin-right: 15px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; }\n    .cta { background: #48bb78; color: white; padding: 14px 30px; text-decoration: none; border-radius: 8px; display: inline-block; margin: 20px 0; font-weight: 600; }\n    .footer { background: #f7fafc; padding: 30px; text-align: center; color: #718096; font-size: 14px; }\n  </style>\n</head>\n<body>\n  <div class=\"container\">\n    <div class=\"header\">\n      <h1>🎉 Welcome Aboard!</h1>\n    </div>\n    <div class=\"content\">\n      <h2>Hi {{ $('Add Subscriber').item.json.full_name }},</h2>\n      <p>Thank you for subscribing to your personalized <strong>{{ $('Add Subscriber').item.json.domain }}</strong> newsletter! We're excited to keep you informed with curated, fact-checked news from <strong>{{ $('Add Subscriber').item.json.region }}</strong>.</p>\n      \n      <p>Here's what you can expect:</p>\n      \n      <div class=\"feature\">\n        <div class=\"feature-icon\">✓</div>\n        <div>\n          <strong>Curated Content:</strong> Hand-picked stories from authoritative sources\n        </div>\n      </div>\n      \n      <div class=\"feature\">\n        <div class=\"feature-icon\">✓</div>\n        <div>\n          <strong>Fact-Checked:</strong> Every claim verified across multiple independent sources\n        </div>\n      </div>\n      \n      <div class=\"feature\">\n        <div class=\"feature-icon\">✓</div>\n        <div>\n          <strong>{{ $('Add Subscriber').item.json.frequency }} Delivery:</strong> Fresh insights delivered to your inbox\n        </div>\n      </div>\n      \n      <div class=\"feature\">\n        <div class=\"feature-icon\">✓</div>\n        <div>\n          <strong>Expert Analysis:</strong> Perspectives from industry leaders\n        </div>\n      </div>\n      \n      <p>Your first newsletter will arrive soon. In the meantime, feel free to reach out if you have any questions.</p>\n      \n      <p style=\"margin-top: 30px; color: #718096; font-size: 14px;\">\n        You're receiving this because you subscribed to our  newsletter {{ $('Add Subscriber').item.json.domain }} for {{ $('Add Subscriber').item.json.region }} .\n      </p>\n    </div>\n    <div class=\"footer\">\n      <p>© 2025 Research Agent Newsletter. All rights reserved.</p>\n      <p>Stay informed. Stay ahead.</p>\n    </div>\n  </div>\n</body>\n</html>",
+        "options": {}
+      },
+      "id": "7b5185e1-1012-45ff-b89b-0bcab8035048",
+      "name": "Send Welcome Email",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2,
+      "position": [
+        1856,
+        -48
+      ],
+      "webhookId": "2d6db305-1a3f-4801-aa5f-698d83b1f169",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "k7BiEc2frdpnFoSO",
+          "name": "The_AI_MailID"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "={\n  { \n    { \n      \"success\": true, \n      \"message\": \"Successfully subscribed to newsletter!\", \"details\": \n          { \"email\": {{ $('Add Subscriber').item.json.email }} , \n            \"frequency\":{{ $('Add Subscriber').item.json.frequency }} , \n            \"domain\": {{ $('Add Subscriber').item.json.domain }}\n          } \n    }\n  }\n} ",
+        "options": {}
+      },
+      "id": "6956c607-1923-4377-9116-7b0f1a4a2e0f",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        2096,
+        -48
+      ]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 8
+            }
+          ]
+        }
+      },
+      "id": "140b0c60-ed14-4f82-b9e5-78e09bab0b28",
+      "name": "Schedule Daily",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1,
+      "position": [
+        -240,
+        640
+      ]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 8
+            }
+          ]
+        }
+      },
+      "id": "add69a54-4c0c-4e05-922f-20985b060efb",
+      "name": "Schedule Weekly",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1,
+      "position": [
+        -256,
+        1168
+      ]
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1voCj0tyS9ivR-DADCWVcNDVUCAn2BFh-WKm1Kfm12hI",
+          "mode": "list",
+          "cachedResultName": "Newsletter Subscribers",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1voCj0tyS9ivR-DADCWVcNDVUCAn2BFh-WKm1Kfm12hI/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Subscribers",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1voCj0tyS9ivR-DADCWVcNDVUCAn2BFh-WKm1Kfm12hI/edit#gid=0"
+        },
+        "options": {}
+      },
+      "id": "72ec4bd5-8c17-4eea-b71b-8972473f72bd",
+      "name": "Get Active Subscribers",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [
+        -32,
+        640
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "L8nx4NEeh8SQzkAs",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// =======================================================\n// Filter Subscribers by Frequency (Daily / Weekly)\n// Works perfectly for workflows with multiple Schedule nodes\n// =======================================================\n\n// Step 1: Detect which schedule triggered the workflow\nconst activeNode = $workflow.activeNode;\nlet triggerType = 'daily'; // default fallback\n\nif (activeNode) {\n  const nodeName = activeNode.name.toLowerCase();\n  if (nodeName.includes('weekly')) triggerType = 'weekly';\n  else if (nodeName.includes('daily')) triggerType = 'daily';\n}\n\nconsole.log(`🕒 Triggered by node: ${activeNode?.name || 'unknown'}`);\nconsole.log(`✅ Frequency type detected: ${triggerType}`);\n\n// Step 2: Get all subscriber records (from Google Sheets)\nconst allSubscribers = $input.all().map(i => i.json);\n\n// Step 3: Filter based on frequency\nconst filteredUsers = allSubscribers.filter(sub => {\n  const freq = sub.frequency?.toLowerCase() || 'daily';\n  return freq === triggerType;\n});\n\n// Step 4: Validate results\nif (filteredUsers.length === 0) {\n  console.log(`No subscribers found for frequency type: ${triggerType}`);\n  return [];\n}\n\n// Step 5: Return filtered subscribers\nreturn filteredUsers.map(sub => ({\n  json: {\n    ...sub,\n    trigger_type: triggerType,\n  },\n}));\n"
+      },
+      "id": "4985f4f8-bcd9-44ea-bae3-b3e64425d576",
+      "name": "Filter by Frequency",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        192,
+        640
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ `Generate a comprehensive research newsletter for the following user:\n\n**User Profile:**\n- Name: ${$json.full_name}\n- Email: ${$json.email}\n- Region: ${$json.region}\n- Domain: ${$json.domain}\n- Frequency: ${$json.frequency}\n- Last Newsletter Date: ${$json.last_sent || 'First newsletter'}\n\n**Current Date:** ${new Date().toLocaleDateString('en-US', { timeZone: 'Asia/Kolkata', weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}\n\n**Instructions:**\n1. Research the top 3-5 stories in the **${$json.domain}** domain relevant to **${$json.region}**\n2. Focus on developments since ${$json.last_sent || 'the last week'}\n3. Prioritize primary sources and authoritative reporting\n4. Include confidence ratings for major claims\n5. Suggest specific images for each story (provide Unsplash search terms)\n6. Provide source links for verification\n\n**Required Output Format:**\nReturn a JSON object with this structure:\n{\n  \"newsletter_title\": \"Descriptive title for this edition\",\n  \"executive_summary\": \"2-3 sentence overview\",\n  \"stories\": [\n    {\n      \"headline\": \"Story headline\",\n      \"summary\": \"Brief description\",\n      \"key_points\": [\"point 1\", \"point 2\", \"point 3\"],\n      \"source\": \"Primary source name and link\",\n      \"confidence\": \"High/Medium/Low\",\n      \"image_search\": \"Unsplash search term\",\n      \"published_date\": \"ISO date if available\"\n    }\n  ],\n  \"expert_insight\": {\n    \"quote\": \"Expert quote or analysis\",\n    \"attribution\": \"Name and credentials\"\n  },\n  \"upcoming\": [\"Future event 1\", \"Future event 2\"],\n  \"sources\": [\"Source 1\", \"Source 2\", \"Source 3\"]\n  \"Name\": ${$json.full_name}\n  \"Email\": ${$json.email}\n  \"Region\": ${$json.region}\n  \"Domain\": ${$json.domain}\n  \"Frequency\": ${$json.frequency}\n  \"Current Date\":${new Date().toLocaleDateString('en-US', { timeZone: 'Asia/Kolkata', weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}\n}\n\nResearch thoroughly and maintain high journalistic standards.` }}",
+        "hasOutputParser": true,
+        "options": {
+          "systemMessage": "=You are an expert research agent producing high-quality, fact-checked newsletters for professionals.\n\n**Core Principles:**\n1. Prioritize PRIMARY sources over secondary reporting\n2. Cross-verify claims across at least 2 independent sources\n3. Rate confidence levels (High/Medium/Low) for major claims\n4. Flag uncertainty, bias, or conflicting reports explicitly\n5. Never invent data, quotes, or sources\n6. If information is unavailable, state so explicitly\n\n**Research Methodology:**\n\nSTEP 1: IDENTIFY AUTHORITATIVE SOURCES\n- Primary Sources: Official documents, research papers, company announcements\n- Real-time Discussion: Community forums, social media trends\n- Expert Interpretation: Industry analysts, academic perspectives\n\nSTEP 2: SOURCE VERIFICATION\n- Check at least 2 independent confirmations for major claims\n- Compare headlines across outlets to detect bias/exaggeration\n- Prioritize sources from last 24 hours for fast-moving topics\n- Use weekly/monthly context for slow-moving topics\n\nSTEP 3: CONTENT VALIDATION\n- Distinguish peer-reviewed research from preprints\n- Attribute opinions clearly (never present as facts)\n- Treat forums as signal sources, not truth sources\n- Include confidence ratings for claims\n\n**Domain-Specific Source Guidelines:**\n\nAI/ML:\n- Primary: arXiv, OpenAI/Google/Meta/Anthropic blogs, research papers\n- News: MIT Tech Review, VentureBeat, TechCrunch\n- Community: Hacker News, GitHub trending, AI subreddits\n\nFinance:\n- Primary: SEC filings, central bank releases, earnings reports\n- News: Bloomberg, Financial Times, Wall Street Journal\n- Community: FinTwit, Reddit r/investing\n\nHealth:\n- Primary: WHO, CDC, NIH, peer-reviewed journals\n- News: STAT News, Nature Medicine, Science Magazine\n- Community: Medical forums (lower weight)\n\nCrime & Security:\n- Primary: Police reports, FBI releases, court documents\n- News: Reuters, AP News, local investigative journalism\n\nPolitical:\n- Primary: Government websites, official statements, legislation\n- News: Reuters, AP, BBC\n- Community: Political forums (verify carefully)\n\nScience & Technology:\n- Primary: Academic journals, patent filings\n- News: Nature News, Science, IEEE Spectrum\n- Community: Reddit r/science, ResearchGate\n\nBusiness & Economy:\n- Primary: Company filings, economic data, quarterly reports\n- News: Bloomberg, Economist, HBR\n- Community: LinkedIn, business forums\n\nSports:\n- Primary: Official league statements\n- News: ESPN, The Athletic\n- Community: Team subreddits\n\n**Critical Rules:**\n- Include specific Unsplash search terms for images\n- Rate each major claim's confidence level\n- Distinguish between fact and speculation\n- If sources conflict, present both sides\n- Never fill gaps with assumptions\n- Be transparent about information limits"
+        }
+      },
+      "id": "f532fe8c-27d5-466d-9982-74564f78de4b",
+      "name": "AI Research Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.7,
+      "position": [
+        400,
+        640
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Parse the AI research outputs for all incoming items\nconst results = [];\n\nfor (const item of $input.all()) {\n  const aiOutput = item.json.output;\n  let researchData;\n\n  try {\n    // Attempt to extract JSON from string or nested structure\n    const jsonMatch = aiOutput.match(/\\{[\\s\\S]*\\}/);\n    if (jsonMatch) {\n      researchData = JSON.parse(jsonMatch[0]);\n    } else {\n      researchData = typeof aiOutput === 'string' ? JSON.parse(aiOutput) : aiOutput;\n    }\n  } catch (error) {\n    console.error('Parse error:', error);\n    throw new Error('Could not parse research output for ' + (item.json.email || 'unknown') + ': ' + error.message);\n  }\n\n  // Validate required fields\n  if (!researchData.newsletter_title || !researchData.stories) {\n    throw new Error('Invalid research output: missing required fields for ' + (item.json.email || 'unknown'));\n  }\n\n  // Combine with user data\n  results.push({\n    json: {\n      ...item.json,\n      research: researchData,\n    },\n  });\n}\n\n// Return all parsed items (one per input)\nreturn results;\n"
+      },
+      "id": "dab47f69-0458-41f9-a10b-ff6e1bd23ddf",
+      "name": "Parse Research Output",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        688,
+        640
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=={{\n  `Create a beautiful HTML newsletter from this research content.\n\n**Research Data:**\n${JSON.stringify($json.research, null, 2)}\n\n**User Details:**\n- Name: ${$json.full_name}\n- Domain: ${$json.domain}\n- Region: ${$json.region}\n- Frequency: ${$json.frequency}\n- Edition: ${$json.frequency === 'Daily' ? 'Daily Edition' : 'Weekly Digest'}\n- Date: ${new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}\n\n**CRITICAL IMAGE INSTRUCTIONS:**\nFor each story in the research data, you MUST include an image placeholder in this EXACT format:\n[IMAGE_0] for the first story\n[IMAGE_1] for the second story\n[IMAGE_2] for the third story\nAnd so on...\n\nPlace these placeholders BEFORE each story headline in the HTML.\n\n**Requirements:**\n1. Create email-compatible HTML with inline CSS only\n2. Include a gradient header with the newsletter title\n3. Add a personalized greeting: \"Hello ${$json.full_name},\"\n4. For EACH story, include the image placeholder [IMAGE_X] before the story content\n5. Use a clean, modern design\n6. Maximum width: 600px\n7. Include proper spacing and typography\n8. Add a footer with unsubscribe text\n\n**Color Scheme:**\n- Primary: #667eea\n- Secondary: #764ba2\n- Accent: #48bb78\n- Text: #2d3748\n- Background: #f7fafc\n\n**Example Structure:**\n<div style=\"max-width: 600px; margin: 0 auto;\">\n  <div style=\"background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 40px; text-align: center;\">\n    <h1 style=\"color: white; margin: 0;\">Newsletter Title</h1>\n  </div>\n  <div style=\"padding: 30px;\">\n    <p>Hello ${$json.full_name},</p>\n    <p>Executive summary here...</p>\n    \n    <div style=\"margin: 30px 0;\">\n      [IMAGE_0]\n      <h2>Story 1 Headline</h2>\n      <p>Story content...</p>\n    </div>\n    \n    <div style=\"margin: 30px 0;\">\n      [IMAGE_1]\n      <h2>Story 2 Headline</h2>\n      <p>Story content...</p>\n    </div>\n  </div>\n</div>\n\nGenerate complete, valid HTML with inline CSS.\nRemember to include [IMAGE_X] placeholders for each story!\nmake sure to include the User Details in the output which will be input for next node\n`\n}}",
+        "options": {
+          "systemMessage": "=You are a professional newsletter designer and copywriter.\n\nYour task is to transform research content into a beautiful, engaging HTML newsletter.\n\n**Design Principles:**\n- Clean, professional layout with consistent branding\n- Mobile-responsive design\n- Clear visual hierarchy\n- Strategic use of whitespace\n- Accessible color contrast\n- Professional typography\n\n**Newsletter Structure:**\n\n1. HEADER\n   - Professional banner with gradient background\n   - Newsletter title\n   - Date and edition number\n   - Personalized greeting\n\n2. HERO SECTION\n   - Featured story with image placeholder\n   - Strong headline\n   - Brief summary\n\n3. MAIN CONTENT (3-5 stories)\n   - Image placeholder: [IMAGE_0], [IMAGE_1], etc.\n   - Clear headline\n   - Key points (bulleted)\n   - Source attribution\n   - Confidence rating badge\n\n4. EXPERT INSIGHTS\n   - Quote with styling\n   - Attribution\n\n5. LOOKING AHEAD\n   - Upcoming events list\n\n6. FOOTER\n   - Unsubscribe link\n   - Contact info\n   - Social media placeholders\n\n**Technical Requirements:**\n- Inline CSS only\n- Table-based layout for email compatibility\n- Max width 600px\n- Gmail/Outlook compatible\n- Use [IMAGE_X] placeholders for images\n\nGenerate complete, valid HTML."
+        }
+      },
+      "id": "14d7061a-cefc-4093-8a30-200b1cdfa55e",
+      "name": "AI Format Newsletter",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.7,
+      "position": [
+        832,
+        640
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// ======================================================\n// FETCH & EMBED IMAGES - MULTI-ITEM ENABLED VERSION\n// ======================================================\n\nconst UNSPLASH_ACCESS_KEY = 'UYl-Fy-yzFn8izkDeEKpLUzxtY3fubv3BLfJFvrDhZ4';\nconst UNSPLASH_API_URL = 'https://api.unsplash.com/search/photos';\n\n// Curated fallback images\nconst CURATED_IMAGES = {\n  quantum: [\n    'https://images.unsplash.com/photo-1635070041078-e363dbe005cb?w=800',\n    'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=800',\n    'https://images.pexels.com/photos/2166711/pexels-photo-2166711.jpeg?w=800'\n  ],\n  solar: [\n    'https://images.unsplash.com/photo-1509391366360-2e959784a276?w=800',\n    'https://images.unsplash.com/photo-1497440001374-f26997328c1b?w=800',\n    'https://images.pexels.com/photos/433308/pexels-photo-433308.jpeg?w=800'\n  ],\n  ai: [\n    'https://images.unsplash.com/photo-1677442136019-21780ecad995?w=800',\n    'https://images.unsplash.com/photo-1620712943543-bcc4688e7485?w=800',\n    'https://images.pexels.com/photos/8386440/pexels-photo-8386440.jpeg?w=800'\n  ],\n  biotech: [\n    'https://images.unsplash.com/photo-1532187863486-abf9dbad1b69?w=800',\n    'https://images.unsplash.com/photo-1582719471384-894fbb16e074?w=800',\n    'https://images.pexels.com/photos/2280571/pexels-photo-2280571.jpeg?w=800'\n  ],\n  space: [\n    'https://images.unsplash.com/photo-1446776811953-b23d57bd21aa?w=800',\n    'https://images.unsplash.com/photo-1454789476662-53eb23ba5907?w=800',\n    'https://images.pexels.com/photos/73871/rocket-launch-rocket-take-off-nasa-73871.jpeg?w=800'\n  ],\n  energy: [\n    'https://images.unsplash.com/photo-1473341304170-971dccb5ac1e?w=800',\n    'https://images.unsplash.com/photo-1466611653911-95081537e5b7?w=800',\n    'https://images.pexels.com/photos/414837/pexels-photo-414837.jpeg?w=800'\n  ],\n  chip: [\n    'https://images.unsplash.com/photo-1518770660439-4636190af475?w=800',\n    'https://images.unsplash.com/photo-1555949963-ff9fe0c870eb?w=800',\n    'https://images.pexels.com/photos/2582937/pexels-photo-2582937.jpeg?w=800'\n  ],\n  default: [\n    'https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=800',\n    'https://images.unsplash.com/photo-1496065187959-7f07b8353c55?w=800',\n    'https://images.pexels.com/photos/546819/pexels-photo-546819.jpeg?w=800'\n  ]\n};\n\n// Helper: Determine image category\nfunction selectImageForStory(story, index) {\n  const text = ((story.headline || '') + ' ' + (story.summary || '')).toLowerCase();\n  let category = 'default';\n  let pool = CURATED_IMAGES.default;\n\n  if (text.includes('quantum') || text.includes('qubit')) pool = CURATED_IMAGES.quantum;\n  else if (text.includes('solar') || text.includes('renewable') || text.includes('energy')) pool = CURATED_IMAGES.solar;\n  else if (text.includes('ai ') || text.includes('machine learning') || text.includes('artificial intelligence')) pool = CURATED_IMAGES.ai;\n  else if (text.includes('biotech') || text.includes('dna') || text.includes('gene')) pool = CURATED_IMAGES.biotech;\n  else if (text.includes('space') || text.includes('nasa') || text.includes('satellite')) pool = CURATED_IMAGES.space;\n  else if (text.includes('chip') || text.includes('processor') || text.includes('semiconductor')) pool = CURATED_IMAGES.chip;\n  else if (text.includes('battery') || text.includes('power')) pool = CURATED_IMAGES.energy;\n\n  return pool[index % pool.length];\n}\n\n// Helper: Fetch Unsplash image\nasync function fetchUnsplashImage(story) {\n  try {\n    const text = ((story.headline || '') + ' ' + (story.summary || '')).toLowerCase();\n    let query = 'technology';\n\n    if (text.includes('quantum')) query = 'quantum computing abstract';\n    else if (text.includes('solar')) query = 'solar panels renewable energy';\n    else if (text.includes('ai')) query = 'artificial intelligence neural network';\n    else if (text.includes('chip')) query = 'microprocessor technology';\n    else if (text.includes('space')) query = 'space astronomy stars';\n    else if (text.includes('biotech')) query = 'biotechnology laboratory science';\n\n    const response = await fetch(`${UNSPLASH_API_URL}?query=${encodeURIComponent(query)}&orientation=landscape&per_page=3`, {\n      headers: { Authorization: `Client-ID ${UNSPLASH_ACCESS_KEY}` },\n    });\n\n    if (!response.ok) return null;\n    const data = await response.json();\n    const result = data.results?.[Math.floor(Math.random() * Math.min(3, data.results.length))];\n    return result?.urls?.regular || null;\n  } catch (e) {\n    console.log(`⚠ Unsplash error: ${e.message}`);\n    return null;\n  }\n}\n\n// ======================================================\n// MAIN LOOP — Process all input items\n// ======================================================\nconst results = await Promise.all(\n  $input.all().map(async (item, idx) => {\n    const rawOutput = item.json.output || '';\n    const research = item.json.research || {};\n    const stories = research.stories || [];\n    let html = rawOutput.trim();\n\n    // Clean up HTML tags\n    html = html.replace(/^```html\\s*/i, '').replace(/```\\s*$/i, '');\n\n    const usedImages = new Set();\n    let replacedCount = 0;\n\n    for (let i = 0; i < stories.length; i++) {\n      const story = stories[i];\n      const placeholder = `[IMAGE_${i}]`;\n\n      if (html.includes(placeholder)) {\n        let imageUrl = await fetchUnsplashImage(story);\n        if (!imageUrl || usedImages.has(imageUrl)) {\n          imageUrl = selectImageForStory(story, i);\n        }\n        usedImages.add(imageUrl);\n\n        const alt = story.headline || `Story ${i + 1}`;\n        const tag = `<img src=\"${imageUrl}\" alt=\"${alt}\" style=\"width:100%;max-width:600px;height:auto;border-radius:8px;display:block;margin:0 auto 15px;box-shadow:0 4px 6px rgba(0,0,0,0.1);\" />`;\n        html = html.split(placeholder).join(tag);\n        replacedCount++;\n      }\n    }\n\n    // Fallback for unfilled placeholders\n    html = html.replace(/\\[IMAGE_\\d+\\]/g, `<img src=\"${CURATED_IMAGES.default[0]}\" alt=\"Newsletter\" style=\"width:100%;max-width:600px;height:auto;border-radius:8px;display:block;margin:0 auto 15px;\" />`);\n\n    return {\n      json: {\n        ...item.json,\n        newsletter_html: html,\n        images_embedded: replacedCount,\n      },\n    };\n  })\n);\n\nreturn results;\n"
+      },
+      "id": "648c7c42-30f6-43b0-8ab9-5a0e659ee55e",
+      "name": "Fetch & Embed Images",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1120,
+        640
+      ]
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $('Parse Research Output').item.json.research.Email }}",
+        "subject": "={{ $('Parse Research Output').item.json.research.newsletter_title}} - {{ $('Parse Research Output').item.json.research.Frequency }} Edition",
+        "message": "={{ $json.newsletter_html }}",
+        "options": {
+          "senderName": "Research Agent Newsletter"
+        }
+      },
+      "id": "d815aca5-2896-42f2-947a-2f509a402196",
+      "name": "Send Newsletter Email",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2,
+      "position": [
+        2016,
+        608
+      ],
+      "webhookId": "1184a0c6-a294-42b9-9cd1-71c5301e69bc",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "k7BiEc2frdpnFoSO",
+          "name": "The_AI_MailID"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "C0A1Y7SA4BU",
+          "mode": "list",
+          "cachedResultName": "design_n8n"
+        },
+        "text": "={{\n`📰 *Newsletter Sent Successfully*\n\n*Newsletter Title:* ${$('Parse Research Output').item.json.research?.newsletter_title || 'Newsletter'}\n\n*Subscriber Details:*\n- Name: ${$('Parse Research Output').item.json.research.Name || 'N/A'}\n- Email: ${$('Parse Research Output').item.json.research.Email || 'N/A'}\n- Domain: ${$('Parse Research Output').item.json.research.Domain || 'N/A'}\n- Region: ${$('Parse Research Output').item.json.research.Region || 'N/A'}\n- Frequency: ${$('Parse Research Output').item.json.research.Frequency || 'N/A'}\n\n*Summary:*\n${$('Parse Research Output').item.json.research?.executive_summary || 'Newsletter generated and sent'}\n\n*Stories Included:*\n${($('Parse Research Output').item.json.research?.stories || [])\n  .map((s, i) => `${i + 1}. ${s.headline || 'Story ' + (i+1)}`)\n  .join('\\n') || 'No stories available'}\n\n*Delivery Info:*\n✅ Sent at: ${new Date().toLocaleString('en-US', { timeZone: 'Asia/Kolkata' })}\n📧 Email sent via Gmail\n🖼️ Images embedded: ${$('Fetch & Embed Images').item.json.images_embedded || 0}\n\n---\n_Automated by Research Agent Newsletter System_`\n}}",
+        "otherOptions": {}
+      },
+      "id": "02e1918f-be3c-42e3-9689-dc8fa95303bd",
+      "name": "Post to Slack",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "position": [
+        2224,
+        608
+      ],
+      "webhookId": "a951b468-700e-41b9-a602-6a04cb4e619a",
+      "credentials": {
+        "slackOAuth2Api": {
+          "id": "n9LyyJzU2RPvSbIm",
+          "name": "Slack account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "1voCj0tyS9ivR-DADCWVcNDVUCAn2BFh-WKm1Kfm12hI",
+          "mode": "list",
+          "cachedResultName": "Newsletter Subscribers",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1voCj0tyS9ivR-DADCWVcNDVUCAn2BFh-WKm1Kfm12hI/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Subscribers",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1voCj0tyS9ivR-DADCWVcNDVUCAn2BFh-WKm1Kfm12hI/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "email": "={{ $json.message.blocks[0].elements[0].elements[8].text }}",
+            "last_sent": "={{ $('Parse Research Output').item.json.research['Current Date'] }}",
+            "channel": "={{ $json.channel }}"
+          },
+          "matchingColumns": [
+            "email"
+          ],
+          "schema": [
+            {
+              "id": "email",
+              "displayName": "email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "full_name",
+              "displayName": "full_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "region",
+              "displayName": "region",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "domain",
+              "displayName": "domain",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "frequency",
+              "displayName": "frequency",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "subscribed_date",
+              "displayName": "subscribed_date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "last_sent",
+              "displayName": "last_sent",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "ok",
+              "displayName": "ok",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "channel",
+              "displayName": "channel",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "message",
+              "displayName": "message",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "message_timestamp",
+              "displayName": "message_timestamp",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "row_number",
+              "displayName": "row_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "readOnly": true,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "10f6cd98-e0b9-41dc-8ab5-ea5c3e584c4c",
+      "name": "Update Last Sent Date",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [
+        2432,
+        608
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "L8nx4NEeh8SQzkAs",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-4.1-mini",
+          "mode": "list",
+          "cachedResultName": "gpt-4.1-mini"
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        400,
+        848
+      ],
+      "id": "348c9155-ad3d-4c4e-ac28-4fc46d674016",
+      "name": "OpenAI Chat Model",
+      "credentials": {
+        "openAiApi": {
+          "id": "cADxqFhKoXFjEnFy",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-4.1-mini"
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        832,
+        864
+      ],
+      "id": "81918fe3-dd09-41bf-a219-e19211d05714",
+      "name": "OpenAI Chat Model1",
+      "credentials": {
+        "openAiApi": {
+          "id": "cADxqFhKoXFjEnFy",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1voCj0tyS9ivR-DADCWVcNDVUCAn2BFh-WKm1Kfm12hI",
+          "mode": "list",
+          "cachedResultName": "Newsletter Subscribers",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1voCj0tyS9ivR-DADCWVcNDVUCAn2BFh-WKm1Kfm12hI/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Subscribers",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1voCj0tyS9ivR-DADCWVcNDVUCAn2BFh-WKm1Kfm12hI/edit#gid=0"
+        },
+        "options": {
+          "returnFirstMatch": false
+        }
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        368,
+        208
+      ],
+      "id": "90341c58-bf61-4e8d-adb5-c7d14bc8600c",
+      "name": "Get row(s) in sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "L8nx4NEeh8SQzkAs",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\n  \"myField\": {{ $json.success }}\n} ",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        1024,
+        208
+      ],
+      "id": "32352d54-ff7b-4f4a-a136-a37d87a900ab",
+      "name": "Respond to Webhook1"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1voCj0tyS9ivR-DADCWVcNDVUCAn2BFh-WKm1Kfm12hI",
+          "mode": "list",
+          "cachedResultName": "Newsletter Subscribers",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1voCj0tyS9ivR-DADCWVcNDVUCAn2BFh-WKm1Kfm12hI/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Subscribers",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1voCj0tyS9ivR-DADCWVcNDVUCAn2BFh-WKm1Kfm12hI/edit#gid=0"
+        },
+        "options": {
+          "returnFirstMatch": false
+        }
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        576,
+        -176
+      ],
+      "id": "9433f842-f7b0-4395-b9ff-df4d553cb3e8",
+      "name": "Get rows in Newsletter_Subscriber sheet",
+      "alwaysOutputData": true,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "L8nx4NEeh8SQzkAs",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// ======================================================\n// Duplicate Email Check (Enhanced)\n// ======================================================\n// • Reads validated webhook data from \"Validate Input\"\n// • Compares email against all rows in \"Get row(s) in sheet1\"\n// • Returns full webhook data + Exist flag (true/false)\n// ======================================================\n\n// Step 1: Get validated input\nconst webhookData = $('Validate Input').item.json;\nconst emailToCheck = (webhookData.email || '').trim().toLowerCase();\n\nconsole.log('🔍 Checking for duplicate email:', emailToCheck);\n\n// Step 2: Load all rows from the sheet\nconst allRows = $('Get rows in Newsletter_Subscriber sheet').all();\nconsole.log('📋 Total rows in sheet:', allRows.length);\n\n// Step 3: Check if email exists\nconst emailExists = allRows.some(item => {\n  const rowEmail = (item.json.email || '').trim().toLowerCase();\n  return rowEmail === emailToCheck;\n});\n\nconsole.log('✅ Email exists:', emailExists);\n\n// Step 4: Return unified result with \"Exist\" flag\nreturn [\n  {\n    json: {\n      ...webhookData,\n      Exist: emailExists ? 'true' : 'false', // consistent JSON string format\n      checked_at: new Date().toISOString(),\n    },\n  },\n];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        816,
+        -176
+      ],
+      "id": "e4e98dfb-e835-4868-bc34-28769a6555ea",
+      "name": "Check for Duplicate"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "9dd16b40-5975-4d9f-b665-af1c72d0c5cd",
+              "leftValue": "={{ $json.Exist }}",
+              "rightValue": "true",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1024,
+        -176
+      ],
+      "id": "0734d542-b695-4f1a-bb0e-9fe8d5ac2da0",
+      "name": "If Duplicate"
+    },
+    {
+      "parameters": {
+        "jsCode": "// ======================================================\n// Remove unwanted fields before writing to Google Sheets\n// ======================================================\n\n// Get the JSON input from previous node\nconst input = $input.item.json;\n\n// Keep only the fields you want to send\nconst allowedKeys = [\n  'email',\n  'full_name',\n  'region',\n  'domain',\n  'frequency',\n  'subscribed_date',\n  'status',\n  'last_sent'\n];\n\n// Filter and build cleaned object\nconst cleanedData = Object.keys(input)\n  .filter(key => allowedKeys.includes(key))\n  .reduce((obj, key) => {\n    obj[key] = input[key];\n    return obj;\n  }, {});\n\nconsole.log('🧹 Cleaned data before sending to Google Sheets:', cleanedData);\n\n// Return cleaned data for next node\nreturn [{ json: cleanedData }];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1376,
+        -48
+      ],
+      "id": "85f2c493-7e1f-44a2-9913-3149d11ae4d4",
+      "name": "Clean additional Data if no Duplicate"
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "1voCj0tyS9ivR-DADCWVcNDVUCAn2BFh-WKm1Kfm12hI",
+          "mode": "list",
+          "cachedResultName": "Newsletter Subscribers",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1voCj0tyS9ivR-DADCWVcNDVUCAn2BFh-WKm1Kfm12hI/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Subscribers",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1voCj0tyS9ivR-DADCWVcNDVUCAn2BFh-WKm1Kfm12hI/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {
+            "email": "={{ $('Validate Input').item.json.email }}",
+            "full_name": "={{ $('Validate Input').item.json.full_name }}",
+            "region": "={{ $('Validate Input').item.json.region }}",
+            "domain": "={{ $('Validate Input').item.json.domain }}",
+            "frequency": "={{ $('Validate Input').item.json.frequency }}",
+            "subscribed_date": "={{ $('Validate Input').item.json.subscribed_date }}",
+            "status": "={{ $('Validate Input').item.json.status }}",
+            "last_sent": "={{ $('Validate Input').item.json.last_sent }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "email",
+              "displayName": "email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "full_name",
+              "displayName": "full_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "region",
+              "displayName": "region",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "domain",
+              "displayName": "domain",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "frequency",
+              "displayName": "frequency",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "subscribed_date",
+              "displayName": "subscribed_date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "last_sent",
+              "displayName": "last_sent",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "791e2a89-aa31-4d2b-a6d5-f84a2111a19a",
+      "name": "Add Subscriber",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [
+        1616,
+        -48
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "L8nx4NEeh8SQzkAs",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// ======================================================\n// Check if email exists in Google Sheet, and return row number\n// ======================================================\n//\n// Input 1: Webhook (contains `email`)\n// Input 2: Google Sheets node (reads all rows)\n// ======================================================\n\n// 🟢 Change this to your Google Sheets node name\nconst SHEET_NODE_NAME = 'Get row(s) in sheet';\n\n// --- Step 1: Get email from Webhook input ---\nconst emailToDelete = ($input.first().json.email || '').trim().toLowerCase();\n\nif (!emailToDelete) {\n  throw new Error('No email provided from Webhook input.');\n}\n\n// --- Step 2: Load rows from the sheet ---\nconst sheetRows = $(SHEET_NODE_NAME).all();\n\nif (!sheetRows.length) {\n  throw new Error('No rows found in Google Sheet.');\n}\n\nconsole.log(`✅ Loaded ${sheetRows.length} rows from Google Sheet`);\n\n// --- Step 3: Find matching email ---\nconst matchedRow = sheetRows.find(\n  row => (row.json.email || '').trim().toLowerCase() === emailToDelete\n);\n\nif (!matchedRow) {\n  console.log(`❌ Email not found in sheet: ${emailToDelete}`);\n  return [\n    {\n      json: {\n        email: emailToDelete,\n        found: false,\n        deleted: false,\n        message: 'Email not found — nothing deleted.',\n      },\n    },\n  ];\n}\n\n// --- Step 4: Extract row number ---\nconst rowNumber = matchedRow.json.row_number;\nif (!rowNumber) {\n  throw new Error('⚠ Row number missing from Google Sheets output. Make sure “Return All” is ON.');\n}\n\nconsole.log(`✅ Found email: ${emailToDelete} at row ${rowNumber}`);\n\n// --- Step 5: Return data for deletion step ---\nreturn [\n  {\n    json: {\n      email: emailToDelete,\n      found: true,\n      deleted: false,\n      row_number: rowNumber, // This will be used by next Google Sheets Delete node\n      message: 'Email found — ready to delete.',\n    },\n  },\n];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        576,
+        208
+      ],
+      "id": "aed19e89-899d-4d93-a131-13459b4ca74d",
+      "name": "Check for Email"
+    },
+    {
+      "parameters": {
+        "operation": "delete",
+        "documentId": {
+          "__rl": true,
+          "value": "1voCj0tyS9ivR-DADCWVcNDVUCAn2BFh-WKm1Kfm12hI",
+          "mode": "list",
+          "cachedResultName": "Newsletter Subscribers",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1voCj0tyS9ivR-DADCWVcNDVUCAn2BFh-WKm1Kfm12hI/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Subscribers",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1voCj0tyS9ivR-DADCWVcNDVUCAn2BFh-WKm1Kfm12hI/edit#gid=0"
+        },
+        "startIndex": "={{ $json.row_number }}"
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        816,
+        208
+      ],
+      "id": "583f639e-01cf-4110-87b4-0723618fc7c6",
+      "name": "Delete rows from sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "L8nx4NEeh8SQzkAs",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "634ce065-03e9-450e-94fe-5a643342d33f",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        128,
+        208
+      ],
+      "id": "88ee13aa-fcd9-4e79-8494-dc3d143e459e",
+      "name": "Webhook - UnSubscribe",
+      "webhookId": "634ce065-03e9-450e-94fe-5a643342d33f"
+    },
+    {
+      "parameters": {
+        "jsCode": "// ======================================================\n// Remove unwanted fields before writing to Google Sheets\n// ======================================================\n\n// Get the JSON input from previous node\nconst input = $input.item.json;\n\n// Keep only the fields you want to send\nconst allowedKeys = [\n  'email',\n  'full_name',\n  'region',\n  'domain',\n  'frequency',\n  'subscribed_date',\n  'status',\n  'last_sent'\n];\n\n// Filter and build cleaned object\nconst cleanedData = Object.keys(input)\n  .filter(key => allowedKeys.includes(key))\n  .reduce((obj, key) => {\n    obj[key] = input[key];\n    return obj;\n  }, {});\n\nconsole.log('🧹 Cleaned data before sending to Google Sheets:', cleanedData);\n\n// Return cleaned data for next node\nreturn [{ json: cleanedData }];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1376,
+        -288
+      ],
+      "id": "15bcf40d-6165-42f8-ad03-ecc870073bb5",
+      "name": "Clean additional Data if no Duplicate1"
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $json.email }}",
+        "subject": "=Welcome to Your Personalized  Newsletter! {{ $json.domain }} Edition",
+        "message": "=<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UTF-8\">\n  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n  <style>\n    body { margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }\n    .container { max-width: 600px; margin: 0 auto; background: #ffffff; }\n    .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 40px 20px; text-align: center; }\n    .header h1 { color: white; margin: 0; font-size: 28px; }\n    .content { padding: 40px 30px; }\n    .content h2 { color: #2d3748; margin-top: 0; }\n    .content p { color: #4a5568; line-height: 1.6; font-size: 16px; }\n    .feature { display: flex; align-items: flex-start; margin: 20px 0; padding: 15px; background: #f7fafc; border-radius: 8px; }\n    .feature-icon { width: 24px; height: 24px; background: #667eea; border-radius: 50%; margin-right: 15px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; }\n    .cta { background: #48bb78; color: white; padding: 14px 30px; text-decoration: none; border-radius: 8px; display: inline-block; margin: 20px 0; font-weight: 600; }\n    .footer { background: #f7fafc; padding: 30px; text-align: center; color: #718096; font-size: 14px; }\n  </style>\n</head>\n<body>\n  <div class=\"container\">\n    <div class=\"header\">\n      <h1>🎉 Welcome Aboard!</h1>\n    </div>\n    <div class=\"content\">\n      <h2>Hi {{ $json.full_name }},</h2>\n      <p>Thank you for Updating the subscription to your personalized <strong>{{ $json.domain }}</strong> newsletter! We're excited to keep you informed with curated, fact-checked news from <strong>{{ $json.region }}</strong>.</p>\n      \n      <p>Here's what you can expect:</p>\n      \n      <div class=\"feature\">\n        <div class=\"feature-icon\">✓</div>\n        <div>\n          <strong>Curated Content:</strong> Hand-picked stories from authoritative sources\n        </div>\n      </div>\n      \n      <div class=\"feature\">\n        <div class=\"feature-icon\">✓</div>\n        <div>\n          <strong>Fact-Checked:</strong> Every claim verified across multiple independent sources\n        </div>\n      </div>\n      \n      <div class=\"feature\">\n        <div class=\"feature-icon\">✓</div>\n        <div>\n          <strong> {{ $json.frequency }} Delivery:</strong> Fresh insights delivered to your inbox\n        </div>\n      </div>\n      \n      <div class=\"feature\">\n        <div class=\"feature-icon\">✓</div>\n        <div>\n          <strong>Expert Analysis:</strong> Perspectives from industry leaders\n        </div>\n      </div>\n      \n      <p>Your first newsletter will arrive soon. In the meantime, feel free to reach out if you have any questions.</p>\n      \n      <p style=\"margin-top: 30px; color: #718096; font-size: 14px;\">\n        You're receiving this because you subscribed to our  newsletter {{ $json.domain }} for {{ $json.region }} .\n      </p>\n    </div>\n    <div class=\"footer\">\n      <p>© 2025 Research Agent Newsletter. All rights reserved.</p>\n      <p>Stay informed. Stay ahead.</p>\n    </div>\n  </div>\n</body>\n</html>",
+        "options": {}
+      },
+      "id": "c35bd434-90ab-430f-8d27-7bf256d207a3",
+      "name": "Send Welcome Email1",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2,
+      "position": [
+        1856,
+        -288
+      ],
+      "webhookId": "2d6db305-1a3f-4801-aa5f-698d83b1f169",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "k7BiEc2frdpnFoSO",
+          "name": "The_AI_MailID"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "={\n  { \n    { \n      \"success\": true, \n      \"message\": \"Successfully subscribed to newsletter!\", \"details\": \n          { \"email\": {{ $('Update row in sheet').item.json.email }} , \n            \"frequency\":{{ $('Update row in sheet').item.json.frequency }} , \n            \"domain\": {{ $('Update row in sheet').item.json.domain }}\n          } \n    }\n  }\n} ",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        2064,
+        -288
+      ],
+      "id": "b4257695-468f-4645-a239-f70119a3336e",
+      "name": "Respond to Webhook3"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "1voCj0tyS9ivR-DADCWVcNDVUCAn2BFh-WKm1Kfm12hI",
+          "mode": "list",
+          "cachedResultName": "Newsletter Subscribers",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1voCj0tyS9ivR-DADCWVcNDVUCAn2BFh-WKm1Kfm12hI/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Subscribers",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1voCj0tyS9ivR-DADCWVcNDVUCAn2BFh-WKm1Kfm12hI/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "full_name": "={{ $json.full_name }}",
+            "email": "={{ $json.email }}",
+            "region": "={{ $json.region }}",
+            "domain": "={{ $json.domain }}",
+            "frequency": "={{ $json.frequency }}",
+            "subscribed_date": "={{ $json.subscribed_date }}",
+            "status": "={{ $json.status }}",
+            "last_sent": "={{ $json.last_sent }}"
+          },
+          "matchingColumns": [
+            "email"
+          ],
+          "schema": [
+            {
+              "id": "email",
+              "displayName": "email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "full_name",
+              "displayName": "full_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "region",
+              "displayName": "region",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "domain",
+              "displayName": "domain",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "frequency",
+              "displayName": "frequency",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "subscribed_date",
+              "displayName": "subscribed_date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "last_sent",
+              "displayName": "last_sent",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "row_number",
+              "displayName": "row_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "readOnly": true,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1616,
+        -288
+      ],
+      "id": "9f61f377-477e-48f5-953a-7b7764ecf7f6",
+      "name": "Update row in sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "L8nx4NEeh8SQzkAs",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1voCj0tyS9ivR-DADCWVcNDVUCAn2BFh-WKm1Kfm12hI",
+          "mode": "list",
+          "cachedResultName": "Newsletter Subscribers",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1voCj0tyS9ivR-DADCWVcNDVUCAn2BFh-WKm1Kfm12hI/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Subscribers",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1voCj0tyS9ivR-DADCWVcNDVUCAn2BFh-WKm1Kfm12hI/edit#gid=0"
+        },
+        "options": {}
+      },
+      "id": "6eb519bd-ec07-4583-b6c1-fd32436a1aad",
+      "name": "Get Active Subscribers1",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [
+        -32,
+        1168
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "L8nx4NEeh8SQzkAs",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// =======================================================\n// Filter Subscribers by Frequency (WEEKLY ONLY)\n// Designed for your separate Schedule Weekly workflow\n// =======================================================\n\n// Step 1: Get all subscriber records (from Google Sheets)\nconst allSubscribers = $input.all().map(item => item.json);\n\n// Step 2: Filter only weekly frequency users\nconst filteredUsers = allSubscribers.filter(sub => {\n  const freq = sub.frequency?.toLowerCase().trim();\n  return freq === 'weekly';\n});\n\n// Step 3: Validate\n// Step 3: Skip execution gracefully if no weekly users\nif (filteredUsers.length === 0) {\n  console.log('No subscribers found with frequency: weekly');\n  return [];\n}\n\n// Step 4: Return filtered list with frequency tag\nreturn filteredUsers.map(sub => ({\n  json: {\n    ...sub,\n    trigger_type: 'weekly',\n  },\n}));\n"
+      },
+      "id": "13307442-e2d2-457a-90bc-849e61fc69e8",
+      "name": "Filter by Frequency1",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        176,
+        1168
+      ],
+      "alwaysOutputData": false
+    },
+    {
+      "parameters": {
+        "jsCode": "// Organize Newsletter Outputs\n// ------------------------------------------\n// This script takes multiple newsletter outputs\n// and structures them into organized objects\n// ready for email + Slack messages.\n\nconst results = [];\nconst items = $input.all();\n\nfor (let i = 0; i < items.length; i++) {\n  const item = items[i].json;\n\n  // Extract relevant data safely\n  const email = item.email || 'unknown@email.com';\n  const full_name = item.full_name || 'Subscriber';\n  const region = item.region || 'Unknown';\n  const domain = item.domain || 'General';\n  const frequency = item.frequency || 'Daily';\n  const html = item.newsletter_html || '';\n  const research = item.research || {};\n  const newsletter_title =\n    research.newsletter_title ||\n    (html.match(/<title>(.*?)<\\/title>/i)?.[1] || 'Newsletter Update');\n\n  // Build output structure\n  results.push({\n    json: {\n      output_name: `output${i + 1}`,\n      email,\n      full_name,\n      region,\n      domain,\n      frequency,\n      newsletter_title,\n      newsletter_html: html,\n    },\n  });\n}\n\nreturn results;\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1328,
+        640
+      ],
+      "id": "0bdaa8a3-0091-422d-962d-d1c51763f103",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        1536,
+        640
+      ],
+      "id": "2a8fc458-6601-42b8-8da6-d643f26e03c1",
+      "name": "Loop Over Items"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ `Generate a comprehensive research newsletter for the following user:\n\n**User Profile:**\n- Name: ${$json.full_name}\n- Email: ${$json.email}\n- Region: ${$json.region}\n- Domain: ${$json.domain}\n- Frequency: ${$json.frequency}\n- Last Newsletter Date: ${$json.last_sent || 'First newsletter'}\n\n**Current Date:** ${new Date().toLocaleDateString('en-US', { timeZone: 'Asia/Kolkata', weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}\n\n**Instructions:**\n1. Research the top 3-5 stories in the **${$json.domain}** domain relevant to **${$json.region}**\n2. Focus on developments since ${$json.last_sent || 'the last week'}\n3. Prioritize primary sources and authoritative reporting\n4. Include confidence ratings for major claims\n5. Suggest specific images for each story (provide Unsplash search terms)\n6. Provide source links for verification\n\n**Required Output Format:**\nReturn a JSON object with this structure:\n{\n  \"newsletter_title\": \"Descriptive title for this edition\",\n  \"executive_summary\": \"2-3 sentence overview\",\n  \"stories\": [\n    {\n      \"headline\": \"Story headline\",\n      \"summary\": \"Brief description\",\n      \"key_points\": [\"point 1\", \"point 2\", \"point 3\"],\n      \"source\": \"Primary source name and link\",\n      \"confidence\": \"High/Medium/Low\",\n      \"image_search\": \"Unsplash search term\",\n      \"published_date\": \"ISO date if available\"\n    }\n  ],\n  \"expert_insight\": {\n    \"quote\": \"Expert quote or analysis\",\n    \"attribution\": \"Name and credentials\"\n  },\n  \"upcoming\": [\"Future event 1\", \"Future event 2\"],\n  \"sources\": [\"Source 1\", \"Source 2\", \"Source 3\"]\n  \"Name\": ${$json.full_name}\n  \"Email\": ${$json.email}\n  \"Region\": ${$json.region}\n  \"Domain\": ${$json.domain}\n  \"Frequency\": ${$json.frequency}\n  \"Current Date\":${new Date().toLocaleDateString('en-US', { timeZone: 'Asia/Kolkata', weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}\n}\n\nResearch thoroughly and maintain high journalistic standards.` }}",
+        "hasOutputParser": true,
+        "options": {
+          "systemMessage": "=You are an expert research agent producing high-quality, fact-checked newsletters for professionals.\n\n**Core Principles:**\n1. Prioritize PRIMARY sources over secondary reporting\n2. Cross-verify claims across at least 2 independent sources\n3. Rate confidence levels (High/Medium/Low) for major claims\n4. Flag uncertainty, bias, or conflicting reports explicitly\n5. Never invent data, quotes, or sources\n6. If information is unavailable, state so explicitly\n\n**Research Methodology:**\n\nSTEP 1: IDENTIFY AUTHORITATIVE SOURCES\n- Primary Sources: Official documents, research papers, company announcements\n- Real-time Discussion: Community forums, social media trends\n- Expert Interpretation: Industry analysts, academic perspectives\n\nSTEP 2: SOURCE VERIFICATION\n- Check at least 2 independent confirmations for major claims\n- Compare headlines across outlets to detect bias/exaggeration\n- Prioritize sources from last 168 hours or 7 days for fast-moving topics\n- Use weekly/monthly context for slow-moving topics\n\nSTEP 3: CONTENT VALIDATION\n- Distinguish peer-reviewed research from preprints\n- Attribute opinions clearly (never present as facts)\n- Treat forums as signal sources, not truth sources\n- Include confidence ratings for claims\n\n**Domain-Specific Source Guidelines:**\n\nAI/ML:\n- Primary: arXiv, OpenAI/Google/Meta/Anthropic blogs, research papers\n- News: MIT Tech Review, VentureBeat, TechCrunch\n- Community: Hacker News, GitHub trending, AI subreddits\n\nFinance:\n- Primary: SEC filings, central bank releases, earnings reports\n- News: Bloomberg, Financial Times, Wall Street Journal\n- Community: FinTwit, Reddit r/investing\n\nHealth:\n- Primary: WHO, CDC, NIH, peer-reviewed journals\n- News: STAT News, Nature Medicine, Science Magazine\n- Community: Medical forums (lower weight)\n\nCrime & Security:\n- Primary: Police reports, FBI releases, court documents\n- News: Reuters, AP News, local investigative journalism\n\nPolitical:\n- Primary: Government websites, official statements, legislation\n- News: Reuters, AP, BBC\n- Community: Political forums (verify carefully)\n\nScience & Technology:\n- Primary: Academic journals, patent filings\n- News: Nature News, Science, IEEE Spectrum\n- Community: Reddit r/science, ResearchGate\n\nBusiness & Economy:\n- Primary: Company filings, economic data, quarterly reports\n- News: Bloomberg, Economist, HBR\n- Community: LinkedIn, business forums\n\nSports:\n- Primary: Official league statements\n- News: ESPN, The Athletic\n- Community: Team subreddits\n\n**Critical Rules:**\n- Include specific Unsplash search terms for images\n- Rate each major claim's confidence level\n- Distinguish between fact and speculation\n- If sources conflict, present both sides\n- Never fill gaps with assumptions\n- Be transparent about information limits"
+        }
+      },
+      "id": "67697cb2-cffa-414f-89d5-caf216d1e7e8",
+      "name": "AI Research Agent2",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.7,
+      "position": [
+        416,
+        1168
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Parse the AI research outputs for all incoming items\nconst results = [];\n\nfor (const item of $input.all()) {\n  const aiOutput = item.json.output;\n  let researchData;\n\n  try {\n    // Attempt to extract JSON from string or nested structure\n    const jsonMatch = aiOutput.match(/\\{[\\s\\S]*\\}/);\n    if (jsonMatch) {\n      researchData = JSON.parse(jsonMatch[0]);\n    } else {\n      researchData = typeof aiOutput === 'string' ? JSON.parse(aiOutput) : aiOutput;\n    }\n  } catch (error) {\n    console.error('Parse error:', error);\n    throw new Error('Could not parse research output for ' + (item.json.email || 'unknown') + ': ' + error.message);\n  }\n\n  // Validate required fields\n  if (!researchData.newsletter_title || !researchData.stories) {\n    throw new Error('Invalid research output: missing required fields for ' + (item.json.email || 'unknown'));\n  }\n\n  // Combine with user data\n  results.push({\n    json: {\n      ...item.json,\n      research: researchData,\n    },\n  });\n}\n\n// Return all parsed items (one per input)\nreturn results;\n"
+      },
+      "id": "e09c388b-3c6f-4aa2-b30f-e3538c5df1d7",
+      "name": "Parse Research Output2",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        704,
+        1168
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=={{\n  `Create a beautiful HTML newsletter from this research content.\n\n**Research Data:**\n${JSON.stringify($json.research, null, 2)}\n\n**User Details:**\n- Name: ${$json.full_name}\n- Domain: ${$json.domain}\n- Region: ${$json.region}\n- Frequency: ${$json.frequency}\n- Edition: ${$json.frequency === 'Daily' ? 'Daily Edition' : 'Weekly Digest'}\n- Date: ${new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}\n\n**CRITICAL IMAGE INSTRUCTIONS:**\nFor each story in the research data, you MUST include an image placeholder in this EXACT format:\n[IMAGE_0] for the first story\n[IMAGE_1] for the second story\n[IMAGE_2] for the third story\nAnd so on...\n\nPlace these placeholders BEFORE each story headline in the HTML.\n\n**Requirements:**\n1. Create email-compatible HTML with inline CSS only\n2. Include a gradient header with the newsletter title\n3. Add a personalized greeting: \"Hello ${$json.full_name},\"\n4. For EACH story, include the image placeholder [IMAGE_X] before the story content\n5. Use a clean, modern design\n6. Maximum width: 600px\n7. Include proper spacing and typography\n8. Add a footer with unsubscribe text\n\n**Color Scheme:**\n- Primary: #667eea\n- Secondary: #764ba2\n- Accent: #48bb78\n- Text: #2d3748\n- Background: #f7fafc\n\n**Example Structure:**\n<div style=\"max-width: 600px; margin: 0 auto;\">\n  <div style=\"background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 40px; text-align: center;\">\n    <h1 style=\"color: white; margin: 0;\">Newsletter Title</h1>\n  </div>\n  <div style=\"padding: 30px;\">\n    <p>Hello ${$json.full_name},</p>\n    <p>Executive summary here...</p>\n    \n    <div style=\"margin: 30px 0;\">\n      [IMAGE_0]\n      <h2>Story 1 Headline</h2>\n      <p>Story content...</p>\n    </div>\n    \n    <div style=\"margin: 30px 0;\">\n      [IMAGE_1]\n      <h2>Story 2 Headline</h2>\n      <p>Story content...</p>\n    </div>\n  </div>\n</div>\n\nGenerate complete, valid HTML with inline CSS.\nRemember to include [IMAGE_X] placeholders for each story!\nmake sure to include the User Details in the output which will be input for next node\n`\n}}",
+        "options": {
+          "systemMessage": "=You are a professional newsletter designer and copywriter.\n\nYour task is to transform research content into a beautiful, engaging HTML newsletter.\n\n**Design Principles:**\n- Clean, professional layout with consistent branding\n- Mobile-responsive design\n- Clear visual hierarchy\n- Strategic use of whitespace\n- Accessible color contrast\n- Professional typography\n\n**Newsletter Structure:**\n\n1. HEADER\n   - Professional banner with gradient background\n   - Newsletter title\n   - Date and edition number\n   - Personalized greeting\n\n2. HERO SECTION\n   - Featured story with image placeholder\n   - Strong headline\n   - Brief summary\n\n3. MAIN CONTENT (3-5 stories)\n   - Image placeholder: [IMAGE_0], [IMAGE_1], etc.\n   - Clear headline\n   - Key points (bulleted)\n   - Source attribution\n   - Confidence rating badge\n\n4. EXPERT INSIGHTS\n   - Quote with styling\n   - Attribution\n\n5. LOOKING AHEAD\n   - Upcoming events list\n\n6. FOOTER\n   - Unsubscribe link\n   - Contact info\n   - Social media placeholders\n\n**Technical Requirements:**\n- Inline CSS only\n- Table-based layout for email compatibility\n- Max width 600px\n- Gmail/Outlook compatible\n- Use [IMAGE_X] placeholders for images\n\nGenerate complete, valid HTML."
+        }
+      },
+      "id": "dcd88c35-5afb-4074-b173-948968aab082",
+      "name": "AI Format Newsletter2",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.7,
+      "position": [
+        848,
+        1168
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// ======================================================\n// FETCH & EMBED IMAGES - MULTI-ITEM ENABLED VERSION\n// ======================================================\n\nconst UNSPLASH_ACCESS_KEY = 'UYl-Fy-yzFn8izkDeEKpLUzxtY3fubv3BLfJFvrDhZ4';\nconst UNSPLASH_API_URL = 'https://api.unsplash.com/search/photos';\n\n// Curated fallback images\nconst CURATED_IMAGES = {\n  quantum: [\n    'https://images.unsplash.com/photo-1635070041078-e363dbe005cb?w=800',\n    'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=800',\n    'https://images.pexels.com/photos/2166711/pexels-photo-2166711.jpeg?w=800'\n  ],\n  solar: [\n    'https://images.unsplash.com/photo-1509391366360-2e959784a276?w=800',\n    'https://images.unsplash.com/photo-1497440001374-f26997328c1b?w=800',\n    'https://images.pexels.com/photos/433308/pexels-photo-433308.jpeg?w=800'\n  ],\n  ai: [\n    'https://images.unsplash.com/photo-1677442136019-21780ecad995?w=800',\n    'https://images.unsplash.com/photo-1620712943543-bcc4688e7485?w=800',\n    'https://images.pexels.com/photos/8386440/pexels-photo-8386440.jpeg?w=800'\n  ],\n  biotech: [\n    'https://images.unsplash.com/photo-1532187863486-abf9dbad1b69?w=800',\n    'https://images.unsplash.com/photo-1582719471384-894fbb16e074?w=800',\n    'https://images.pexels.com/photos/2280571/pexels-photo-2280571.jpeg?w=800'\n  ],\n  space: [\n    'https://images.unsplash.com/photo-1446776811953-b23d57bd21aa?w=800',\n    'https://images.unsplash.com/photo-1454789476662-53eb23ba5907?w=800',\n    'https://images.pexels.com/photos/73871/rocket-launch-rocket-take-off-nasa-73871.jpeg?w=800'\n  ],\n  energy: [\n    'https://images.unsplash.com/photo-1473341304170-971dccb5ac1e?w=800',\n    'https://images.unsplash.com/photo-1466611653911-95081537e5b7?w=800',\n    'https://images.pexels.com/photos/414837/pexels-photo-414837.jpeg?w=800'\n  ],\n  chip: [\n    'https://images.unsplash.com/photo-1518770660439-4636190af475?w=800',\n    'https://images.unsplash.com/photo-1555949963-ff9fe0c870eb?w=800',\n    'https://images.pexels.com/photos/2582937/pexels-photo-2582937.jpeg?w=800'\n  ],\n  default: [\n    'https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=800',\n    'https://images.unsplash.com/photo-1496065187959-7f07b8353c55?w=800',\n    'https://images.pexels.com/photos/546819/pexels-photo-546819.jpeg?w=800'\n  ]\n};\n\n// Helper: Determine image category\nfunction selectImageForStory(story, index) {\n  const text = ((story.headline || '') + ' ' + (story.summary || '')).toLowerCase();\n  let category = 'default';\n  let pool = CURATED_IMAGES.default;\n\n  if (text.includes('quantum') || text.includes('qubit')) pool = CURATED_IMAGES.quantum;\n  else if (text.includes('solar') || text.includes('renewable') || text.includes('energy')) pool = CURATED_IMAGES.solar;\n  else if (text.includes('ai ') || text.includes('machine learning') || text.includes('artificial intelligence')) pool = CURATED_IMAGES.ai;\n  else if (text.includes('biotech') || text.includes('dna') || text.includes('gene')) pool = CURATED_IMAGES.biotech;\n  else if (text.includes('space') || text.includes('nasa') || text.includes('satellite')) pool = CURATED_IMAGES.space;\n  else if (text.includes('chip') || text.includes('processor') || text.includes('semiconductor')) pool = CURATED_IMAGES.chip;\n  else if (text.includes('battery') || text.includes('power')) pool = CURATED_IMAGES.energy;\n\n  return pool[index % pool.length];\n}\n\n// Helper: Fetch Unsplash image\nasync function fetchUnsplashImage(story) {\n  try {\n    const text = ((story.headline || '') + ' ' + (story.summary || '')).toLowerCase();\n    let query = 'technology';\n\n    if (text.includes('quantum')) query = 'quantum computing abstract';\n    else if (text.includes('solar')) query = 'solar panels renewable energy';\n    else if (text.includes('ai')) query = 'artificial intelligence neural network';\n    else if (text.includes('chip')) query = 'microprocessor technology';\n    else if (text.includes('space')) query = 'space astronomy stars';\n    else if (text.includes('biotech')) query = 'biotechnology laboratory science';\n\n    const response = await fetch(`${UNSPLASH_API_URL}?query=${encodeURIComponent(query)}&orientation=landscape&per_page=3`, {\n      headers: { Authorization: `Client-ID ${UNSPLASH_ACCESS_KEY}` },\n    });\n\n    if (!response.ok) return null;\n    const data = await response.json();\n    const result = data.results?.[Math.floor(Math.random() * Math.min(3, data.results.length))];\n    return result?.urls?.regular || null;\n  } catch (e) {\n    console.log(`⚠ Unsplash error: ${e.message}`);\n    return null;\n  }\n}\n\n// ======================================================\n// MAIN LOOP — Process all input items\n// ======================================================\nconst results = await Promise.all(\n  $input.all().map(async (item, idx) => {\n    const rawOutput = item.json.output || '';\n    const research = item.json.research || {};\n    const stories = research.stories || [];\n    let html = rawOutput.trim();\n\n    // Clean up HTML tags\n    html = html.replace(/^```html\\s*/i, '').replace(/```\\s*$/i, '');\n\n    const usedImages = new Set();\n    let replacedCount = 0;\n\n    for (let i = 0; i < stories.length; i++) {\n      const story = stories[i];\n      const placeholder = `[IMAGE_${i}]`;\n\n      if (html.includes(placeholder)) {\n        let imageUrl = await fetchUnsplashImage(story);\n        if (!imageUrl || usedImages.has(imageUrl)) {\n          imageUrl = selectImageForStory(story, i);\n        }\n        usedImages.add(imageUrl);\n\n        const alt = story.headline || `Story ${i + 1}`;\n        const tag = `<img src=\"${imageUrl}\" alt=\"${alt}\" style=\"width:100%;max-width:600px;height:auto;border-radius:8px;display:block;margin:0 auto 15px;box-shadow:0 4px 6px rgba(0,0,0,0.1);\" />`;\n        html = html.split(placeholder).join(tag);\n        replacedCount++;\n      }\n    }\n\n    // Fallback for unfilled placeholders\n    html = html.replace(/\\[IMAGE_\\d+\\]/g, `<img src=\"${CURATED_IMAGES.default[0]}\" alt=\"Newsletter\" style=\"width:100%;max-width:600px;height:auto;border-radius:8px;display:block;margin:0 auto 15px;\" />`);\n\n    return {\n      json: {\n        ...item.json,\n        newsletter_html: html,\n        images_embedded: replacedCount,\n      },\n    };\n  })\n);\n\nreturn results;\n"
+      },
+      "id": "90c9126f-7f34-40c9-9869-655511088203",
+      "name": "Fetch & Embed Images2",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1136,
+        1168
+      ]
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $('Parse Research Output2').item.json.research.Email }}",
+        "subject": "={{ $('Parse Research Output2').item.json.research.newsletter_title}} - {{ $('Parse Research Output2').item.json.research.Frequency }} Edition",
+        "message": "={{ $json.newsletter_html }}",
+        "options": {
+          "senderName": "Research Agent Newsletter"
+        }
+      },
+      "id": "65d06b93-276c-4849-bb0e-b29cdd65f276",
+      "name": "Send Newsletter Email2",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2,
+      "position": [
+        2032,
+        1136
+      ],
+      "webhookId": "1184a0c6-a294-42b9-9cd1-71c5301e69bc",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "k7BiEc2frdpnFoSO",
+          "name": "The_AI_MailID"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "C0A1Y7SA4BU",
+          "mode": "list",
+          "cachedResultName": "design_n8n"
+        },
+        "text": "={{\n`📰 *Newsletter Sent Successfully*\n\n*Newsletter Title:* ${$('Parse Research Output2').item.json.research?.newsletter_title || 'Newsletter'}\n\n*Subscriber Details:*\n- Name: ${$('Parse Research Output2').item.json.research.Name || 'N/A'}\n- Email: ${$('Parse Research Output2').item.json.research.Email || 'N/A'}\n- Domain: ${$('Parse Research Output2').item.json.research.Domain || 'N/A'}\n- Region: ${$('Parse Research Output2').item.json.research.Region || 'N/A'}\n- Frequency: ${$('Parse Research Output2').item.json.research.Frequency || 'N/A'}\n\n*Summary:*\n${$('Parse Research Output2').item.json.research?.executive_summary || 'Newsletter generated and sent'}\n\n*Stories Included:*\n${($('Parse Research Output2').item.json.research?.stories || [])\n  .map((s, i) => `${i + 1}. ${s.headline || 'Story ' + (i+1)}`)\n  .join('\\n') || 'No stories available'}\n\n*Delivery Info:*\n✅ Sent at: ${new Date().toLocaleString('en-US', { timeZone: 'Asia/Kolkata' })}\n📧 Email sent via Gmail\n🖼️ Images embedded: ${$('Fetch & Embed Images2').item.json.images_embedded || 0}\n\n---\n_Automated by Research Agent Newsletter System_`\n}}",
+        "otherOptions": {}
+      },
+      "id": "f3591775-6dd9-47cd-8a9b-3cd39adc9e09",
+      "name": "Post to Slack2",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "position": [
+        2240,
+        1136
+      ],
+      "webhookId": "a951b468-700e-41b9-a602-6a04cb4e619a",
+      "credentials": {
+        "slackOAuth2Api": {
+          "id": "n9LyyJzU2RPvSbIm",
+          "name": "Slack account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "1voCj0tyS9ivR-DADCWVcNDVUCAn2BFh-WKm1Kfm12hI",
+          "mode": "list",
+          "cachedResultName": "Newsletter Subscribers",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1voCj0tyS9ivR-DADCWVcNDVUCAn2BFh-WKm1Kfm12hI/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Subscribers",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1voCj0tyS9ivR-DADCWVcNDVUCAn2BFh-WKm1Kfm12hI/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "email": "={{ $json.message.blocks[0].elements[0].elements[8].text }}",
+            "last_sent": "={{ $('Parse Research Output2').item.json.research['Current Date'] }}",
+            "channel": "={{ $json.channel }}"
+          },
+          "matchingColumns": [
+            "email"
+          ],
+          "schema": [
+            {
+              "id": "email",
+              "displayName": "email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "full_name",
+              "displayName": "full_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "region",
+              "displayName": "region",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "domain",
+              "displayName": "domain",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "frequency",
+              "displayName": "frequency",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "subscribed_date",
+              "displayName": "subscribed_date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "last_sent",
+              "displayName": "last_sent",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "ok",
+              "displayName": "ok",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "channel",
+              "displayName": "channel",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "message",
+              "displayName": "message",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "message_timestamp",
+              "displayName": "message_timestamp",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "row_number",
+              "displayName": "row_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "readOnly": true,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "41a5a6d0-e5f5-4da2-8187-273bf7a346da",
+      "name": "Update Last Sent Date2",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [
+        2448,
+        1136
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "L8nx4NEeh8SQzkAs",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-4.1-mini",
+          "mode": "list",
+          "cachedResultName": "gpt-4.1-mini"
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        416,
+        1376
+      ],
+      "id": "6b1e4b6d-2d4a-4ecc-8afc-5fc47aba7aff",
+      "name": "OpenAI Chat Model4",
+      "credentials": {
+        "openAiApi": {
+          "id": "cADxqFhKoXFjEnFy",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-4.1-mini"
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        848,
+        1392
+      ],
+      "id": "a049131b-ec9d-4989-9be9-538bd82727e1",
+      "name": "OpenAI Chat Model5",
+      "credentials": {
+        "openAiApi": {
+          "id": "cADxqFhKoXFjEnFy",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Organize Newsletter Outputs\n// ------------------------------------------\n// This script takes multiple newsletter outputs\n// and structures them into organized objects\n// ready for email + Slack messages.\n\nconst results = [];\nconst items = $input.all();\n\nfor (let i = 0; i < items.length; i++) {\n  const item = items[i].json;\n\n  // Extract relevant data safely\n  const email = item.email || 'unknown@email.com';\n  const full_name = item.full_name || 'Subscriber';\n  const region = item.region || 'Unknown';\n  const domain = item.domain || 'General';\n  const frequency = item.frequency || 'Daily';\n  const html = item.newsletter_html || '';\n  const research = item.research || {};\n  const newsletter_title =\n    research.newsletter_title ||\n    (html.match(/<title>(.*?)<\\/title>/i)?.[1] || 'Newsletter Update');\n\n  // Build output structure\n  results.push({\n    json: {\n      output_name: `output${i + 1}`,\n      email,\n      full_name,\n      region,\n      domain,\n      frequency,\n      newsletter_title,\n      newsletter_html: html,\n    },\n  });\n}\n\nreturn results;\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1344,
+        1168
+      ],
+      "id": "2d1a88be-16e2-41c1-b5cf-f6c827148f9c",
+      "name": "Code in JavaScript1"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        1552,
+        1168
+      ],
+      "id": "f0442eb4-8274-40a2-b590-e17cc329efe4",
+      "name": "Loop Over Items1"
+    }
+  ],
+  "pinData": {
+    "Webhook - Subscribe": [
+      {
+        "json": {
+          "headers": {
+            "host": "n8n.srv1169245.hstgr.cloud",
+            "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36",
+            "content-length": "139",
+            "accept": "*/*",
+            "accept-encoding": "gzip, deflate, br, zstd",
+            "accept-language": "en-US,en;q=0.9",
+            "content-type": "text/plain;charset=UTF-8",
+            "origin": "https://id-preview--5e40f8b3-5135-4477-b117-94c48226ae27.lovable.app",
+            "priority": "u=1, i",
+            "referer": "https://id-preview--5e40f8b3-5135-4477-b117-94c48226ae27.lovable.app/",
+            "sec-ch-ua": "\"Chromium\";v=\"142\", \"Google Chrome\";v=\"142\", \"Not_A Brand\";v=\"99\"",
+            "sec-ch-ua-mobile": "?0",
+            "sec-ch-ua-platform": "\"Windows\"",
+            "sec-fetch-dest": "empty",
+            "sec-fetch-mode": "no-cors",
+            "sec-fetch-site": "cross-site",
+            "x-forwarded-for": "172.18.0.1",
+            "x-forwarded-host": "n8n.srv1169245.hstgr.cloud",
+            "x-forwarded-port": "443",
+            "x-forwarded-proto": "https",
+            "x-forwarded-server": "d194af1d50fd",
+            "x-real-ip": "172.18.0.1"
+          },
+          "params": {},
+          "query": {},
+          "body": "{\"full_name\":\"Rajaganesh Ramakrishnan\",\"email\":\"rajaganesh.ramakrishnan@gmail.com\",\"region\":\"europe\",\"domain\":\"sports\",\"frequency\":\"daily\"}",
+          "webhookUrl": "https://n8n.srv1169245.hstgr.cloud/webhook/newsletter-subscribe",
+          "executionMode": "production"
+        }
+      }
+    ]
+  },
+  "connections": {
+    "Webhook - Subscribe": {
+      "main": [
+        [
+          {
+            "node": "Validate Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate Input": {
+      "main": [
+        [
+          {
+            "node": "Get rows in Newsletter_Subscriber sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Welcome Email": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Daily": {
+      "main": [
+        [
+          {
+            "node": "Get Active Subscribers",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Weekly": {
+      "main": [
+        [
+          {
+            "node": "Get Active Subscribers1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Active Subscribers": {
+      "main": [
+        [
+          {
+            "node": "Filter by Frequency",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter by Frequency": {
+      "main": [
+        [
+          {
+            "node": "AI Research Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Research Agent": {
+      "main": [
+        [
+          {
+            "node": "Parse Research Output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Research Output": {
+      "main": [
+        [
+          {
+            "node": "AI Format Newsletter",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Format Newsletter": {
+      "main": [
+        [
+          {
+            "node": "Fetch & Embed Images",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch & Embed Images": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Newsletter Email": {
+      "main": [
+        [
+          {
+            "node": "Post to Slack",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Post to Slack": {
+      "main": [
+        [
+          {
+            "node": "Update Last Sent Date",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Last Sent Date": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Research Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Format Newsletter",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get row(s) in sheet": {
+      "main": [
+        [
+          {
+            "node": "Check for Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get rows in Newsletter_Subscriber sheet": {
+      "main": [
+        [
+          {
+            "node": "Check for Duplicate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check for Duplicate": {
+      "main": [
+        [
+          {
+            "node": "If Duplicate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If Duplicate": {
+      "main": [
+        [
+          {
+            "node": "Clean additional Data if no Duplicate1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Clean additional Data if no Duplicate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Clean additional Data if no Duplicate": {
+      "main": [
+        [
+          {
+            "node": "Add Subscriber",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Add Subscriber": {
+      "main": [
+        [
+          {
+            "node": "Send Welcome Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check for Email": {
+      "main": [
+        [
+          {
+            "node": "Delete rows from sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Delete rows from sheet": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook - UnSubscribe": {
+      "main": [
+        [
+          {
+            "node": "Get row(s) in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Clean additional Data if no Duplicate1": {
+      "main": [
+        [
+          {
+            "node": "Update row in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Welcome Email1": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update row in sheet": {
+      "main": [
+        [
+          {
+            "node": "Send Welcome Email1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Active Subscribers1": {
+      "main": [
+        [
+          {
+            "node": "Filter by Frequency1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter by Frequency1": {
+      "main": [
+        [
+          {
+            "node": "AI Research Agent2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Items": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Send Newsletter Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Research Agent2": {
+      "main": [
+        [
+          {
+            "node": "Parse Research Output2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Research Output2": {
+      "main": [
+        [
+          {
+            "node": "AI Format Newsletter2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Format Newsletter2": {
+      "main": [
+        [
+          {
+            "node": "Fetch & Embed Images2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch & Embed Images2": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Newsletter Email2": {
+      "main": [
+        [
+          {
+            "node": "Post to Slack2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Post to Slack2": {
+      "main": [
+        [
+          {
+            "node": "Update Last Sent Date2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Last Sent Date2": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model4": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Research Agent2",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model5": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Format Newsletter2",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript1": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Items1": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Send Newsletter Email2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Asia/Kolkata",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "versionId": "e95ff432-3134-4d66-9565-d4f0fa3a52a2",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "b19475a16ece7dfa3179c4c5c74666e9ce9dbe755777e3f588b915772cb4fd7d"
+  },
+  "id": "a5ESFagRoiLA0nSr",
+  "tags": []
+}
